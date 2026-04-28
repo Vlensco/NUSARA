@@ -58,7 +58,6 @@ class ProgressScreen extends ConsumerWidget {
                           ? AppChipVariant.filled
                           : AppChipVariant.outline,
                       onTap: () => notifier.setFilter(filter),
-                      // Atur radius sudut: 10 = sedikit rounded, 100 = pill penuh
                       borderRadius: 10,
                     ),
                   );
@@ -81,7 +80,7 @@ class ProgressScreen extends ConsumerWidget {
                       ),
                     )
                   : ListView.builder(
-                      padding: const EdgeInsets.only(bottom: 24),
+                      padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
                       itemCount: filtered.length,
                       itemBuilder: (context, index) {
                         return ProgressItemTile(item: filtered[index]);

@@ -15,7 +15,7 @@ class ProgressItemTile extends ConsumerWidget {
     return GestureDetector(
       onTap: () => _showStatusDialog(context, ref),
       child: Container(
-        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 5),
+        margin: const EdgeInsets.symmetric(vertical: 5),
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         decoration: BoxDecoration(
           color: AppColors.white,
