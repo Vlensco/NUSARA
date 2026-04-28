@@ -18,12 +18,11 @@ class ChecklistItemTile extends StatelessWidget {
     return GestureDetector(
       onTap: onToggle,
       child: Container(
-        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+        margin: const EdgeInsets.symmetric(vertical: 4),
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         decoration: BoxDecoration(
           color: AppColors.white,
           borderRadius: BorderRadius.circular(12),
-          // ✅ Logika border dari model, bukan dari widget
           border: item.cardBorder,
         ),
         child: Row(
