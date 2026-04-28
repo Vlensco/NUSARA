@@ -4,6 +4,7 @@ import 'package:lucide_icons/lucide_icons.dart';
 import 'package:cabe/core/theme/app_colors.dart';
 import 'package:cabe/features/home/screens/home_screen.dart';
 import 'package:cabe/features/checklist/screens/checklist_screen.dart';
+import 'package:cabe/features/progress/screens/progress_screen.dart';
 
 class BottomNavIndexNotifier extends Notifier<int> {
   @override
@@ -96,7 +97,7 @@ class MainNavigation extends ConsumerWidget {
       case 1:
         return const ChecklistScreen();
       case 2:
-        return const Center(child: Text('Progress Screen'));
+        return const ProgressScreen();
       case 3:
         return const Center(child: Text('Notifikasi Screen'));
       case 4:

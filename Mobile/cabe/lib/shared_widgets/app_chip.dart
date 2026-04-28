@@ -9,6 +9,8 @@ class AppChip extends StatelessWidget {
   final AppChipVariant variant;
   final VoidCallback? onTap;
   final bool isSelected;
+  /// Opsional: override radius sudut chip. Default = 100 (pill/bulat penuh).
+  final double borderRadius;
 
   const AppChip({
     super.key,
@@ -16,6 +18,7 @@ class AppChip extends StatelessWidget {
     this.variant = AppChipVariant.light,
     this.onTap,
     this.isSelected = false,
+    this.borderRadius = 20,
   });
 
   @override
@@ -26,7 +29,7 @@ class AppChip extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
         decoration: BoxDecoration(
           color: _backgroundColor,
-          borderRadius: BorderRadius.circular(100),
+          borderRadius: BorderRadius.circular(borderRadius),
           border: _border,
         ),
         child: Text(
