@@ -29,4 +29,18 @@ class AppColors {
   static const Color coolGray500 = Color(0xFF606367);
   static const Color coolGray700 = Color(0xFF3F4144);
   static const Color coolGray900 = Color(0xFF212224);
+
+  // --- STATUS COLORS ---
+  // Success (Diterima / Cocok >= 70%)
+  static const Color successBg   = Color(0xFFD5F5E3);
+  static const Color successText = Color(0xFF1E8449);
+  // Warning (Ditinjau / Cocok 40–69%)
+  static const Color warningBg   = Color(0xFFFFF3CD);
+  static const Color warningText = Color(0xFF856404);
+  // Danger (Ditolak / Cocok < 40%)
+  static const Color dangerBg    = Color(0xFFFDE8E8);
+  static const Color dangerText  = Color(0xFFC0392B);
+  // Info (Tersimpan)
+  static const Color infoBg      = Color(0xFFD6EAF8);
+  static const Color infoText    = Color(0xFF1A5276);
 }
