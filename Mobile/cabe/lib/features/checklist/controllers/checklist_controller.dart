@@ -224,7 +224,6 @@ final _dummyChecklist = [
   ),
 ];
 
-// --- NOTIFIER ---
 class ChecklistNotifier extends Notifier<List<ChecklistSection>> {
   @override
   List<ChecklistSection> build() => _dummyChecklist;

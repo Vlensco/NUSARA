@@ -65,25 +65,22 @@ class ChecklistScreen extends ConsumerWidget {
               ),
             ),
 
-            // --- LIST CONTENT ---
             Expanded(
               child: ListView.builder(
-                padding: const EdgeInsets.only(bottom: 24),
+                padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
                 itemCount: sections.length,
                 itemBuilder: (context, sectionIndex) {
                   final section = sections[sectionIndex];
                   return Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Section header
                       Padding(
-                        padding: const EdgeInsets.fromLTRB(20, 20, 20, 8),
+                        padding: const EdgeInsets.only(top: 20, bottom: 8),
                         child: Text(
                           section.title,
                           style: AppTextStyles.h3,
                         ),
                       ),
-                      // Items
                       ...section.items.map((item) => ChecklistItemTile(
                             item: item,
                             onToggle: () => notifier.toggleItem(item.id),
