@@ -3,8 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:cabe/core/theme/app_colors.dart';
 import 'package:cabe/features/home/screens/home_screen.dart';
-import 'package:cabe/features/checklist/screens/checklist_screen.dart';
-import 'package:cabe/features/progress/screens/progress_screen.dart';
 
 class BottomNavIndexNotifier extends Notifier<int> {
   @override

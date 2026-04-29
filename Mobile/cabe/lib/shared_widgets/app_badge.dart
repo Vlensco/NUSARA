@@ -17,11 +17,14 @@ class AppBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isMatched = variant == AppBadgeVariant.matched;
+    
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: BoxDecoration(
-        color: _backgroundColor,
+        color: isMatched ? Colors.transparent : _backgroundColor,
         borderRadius: BorderRadius.circular(100),
+        border: isMatched ? Border.all(color: _textColor, width: 1) : null,
       ),
       child: Text(
         _label,
@@ -88,8 +91,8 @@ class AppBadge extends StatelessWidget {
 
   Color get _matchedTextColor {
     final pct = percentage ?? 0;
-    if (pct >= 70) return AppColors.successText;
-    if (pct >= 40) return AppColors.warningText;
-    return AppColors.dangerText;
+    if (pct >= 70) return const Color(0xFF00A36C); // Hijau
+    if (pct >= 40) return const Color(0xFFFF9800); // Oranye
+    return const Color(0xFFE53935); // Merah
   }
 }

@@ -33,14 +33,20 @@ class ScholarshipCard extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(15),
         decoration: BoxDecoration(
           color: AppColors.white,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: AppColors.coolGray200, width: 1),
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.05),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
         ),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.start, 
           children: [
             // Row: Logo + Info + Bookmark
             Row(
@@ -48,24 +54,14 @@ class ScholarshipCard extends StatelessWidget {
               children: [
                 // Logo placeholder
                 Container(
-                  width: 44,
-                  height: 44,
+                  width: 60,
+                  height: 60,
                   decoration: BoxDecoration(
-                    color: providerColor.withOpacity(0.15),
+                    color: providerColor, 
                     borderRadius: BorderRadius.circular(10),
                   ),
-                  child: Center(
-                    child: Container(
-                      width: 28,
-                      height: 28,
-                      decoration: BoxDecoration(
-                        color: providerColor,
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                    ),
-                  ),
                 ),
-                const SizedBox(width: 12),
+                const SizedBox(width: 15),
                 // Title & Provider
                 Expanded(
                   child: Column(
@@ -73,16 +69,20 @@ class ScholarshipCard extends StatelessWidget {
                     children: [
                       Text(
                         title,
-                        style: AppTextStyles.labelLarge,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                          color: AppColors.gray900,
+                        ),
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                       ),
                       const SizedBox(height: 2),
                       Text(
                         provider,
-                        style: AppTextStyles.bodySmall.copyWith(
+                        style: TextStyle(
                           color: providerColor,
-                          fontWeight: FontWeight.w500,
+                          fontSize: 13,
                         ),
                       ),
                     ],
@@ -93,25 +93,39 @@ class ScholarshipCard extends StatelessWidget {
                   onTap: onSaved,
                   child: Icon(
                     isSaved ? Icons.bookmark : Icons.bookmark_border,
-                    size: 22,
-                    color: isSaved ? AppColors.blue500 : AppColors.coolGray300,
+                    size: 26,
+                    color: isSaved ? AppColors.blue900 : Colors.black,
                   ),
                 ),
               ],
             ),
 
             const SizedBox(height: 12),
-
-            // Tags
             Wrap(
-              spacing: 6,
-              runSpacing: 6,
+              spacing: 5,
+              runSpacing: 5,
               children: tags
-                  .map((tag) => AppChip(label: tag, variant: AppChipVariant.light))
+                  .map((tag) => Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.black,
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Text(
+                          tag,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 10,
+                          ),
+                        ),
+                      ))
                   .toList(),
             ),
 
-            const SizedBox(height: 12),
+            const SizedBox(height: 15),
 
             // Footer: Badge cocok + Deadline
             Row(
@@ -123,7 +137,7 @@ class ScholarshipCard extends StatelessWidget {
                 ),
                 Text(
                   '*$daysLeft hari lagi',
-                  style: AppTextStyles.bodySmall,
+                  style: TextStyle(color: Colors.grey[600], fontSize: 12),
                 ),
               ],
             ),

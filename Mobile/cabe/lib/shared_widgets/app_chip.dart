@@ -9,7 +9,6 @@ class AppChip extends StatelessWidget {
   final AppChipVariant variant;
   final VoidCallback? onTap;
   final bool isSelected;
-  /// Opsional: override radius sudut chip. Default = 100 (pill/bulat penuh).
   final double borderRadius;
 
   const AppChip({
