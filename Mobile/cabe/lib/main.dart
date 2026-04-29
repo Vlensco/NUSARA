@@ -1,22 +1,25 @@
 import 'package:flutter/material.dart';
 import 'views/splash_screen.dart';
+// HAPUS import 'views/home_page.dart'; karena menyebabkan error file not found
 
 void main() {
-  runApp(const MyApp());
+  runApp(const CaBeApp());
 }
 
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+class CaBeApp extends StatelessWidget {
+  const CaBeApp({super.key});
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'CaBe - Cari Beasiswa',
       debugShowCheckedModeBanner: false,
+      title: 'CaBe - Cari Beasiswa',
       theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF0086FB)),
         useMaterial3: true,
+        colorSchemeSeed: const Color(0xFF001F3F),
       ),
+      // Gunakan SplashScreen sebagai awal,
+      // jangan panggil HomeScreen di sini karena alurnya: Splash -> Home
       home: const SplashScreen(),
     );
   }
