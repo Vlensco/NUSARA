@@ -38,16 +38,13 @@ class MainNavigation extends ConsumerWidget {
         ),
         child: BottomNavigationBar(
           currentIndex: currentIndex,
-          onTap: (index) =>
-              ref.read(bottomNavIndexProvider.notifier).setIndex(index),
+          onTap: (index) => ref.read(bottomNavIndexProvider.notifier).setIndex(index),
           type: BottomNavigationBarType.fixed,
           backgroundColor: AppColors.white,
           selectedItemColor: AppColors.blue800,
           unselectedItemColor: AppColors.gray500,
-          selectedLabelStyle:
-              const TextStyle(fontWeight: FontWeight.w600, fontSize: 12),
-          unselectedLabelStyle:
-              const TextStyle(fontWeight: FontWeight.w500, fontSize: 12),
+          selectedLabelStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 12),
+          unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.w500, fontSize: 12),
           elevation: 0,
           items: const [
             BottomNavigationBarItem(
@@ -94,11 +91,11 @@ class MainNavigation extends ConsumerWidget {
   Widget _buildBody(int index) {
     switch (index) {
       case 0:
-        return const HomeScreen();
+        return const HomeScreen(); // Menggunakan HomeScreen yang sudah ada
       case 1:
-        return const Center(child: Text('Checklist Screen'));
+        return const ChecklistScreen();
       case 2:
-        return const Center(child: Text('Progress Screen'));
+        return const ProgressScreen();
       case 3:
         return const Center(child: Text('Notifikasi Screen'));
       case 4:

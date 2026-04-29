@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cabe/core/theme/app_text_styles.dart';
-import 'package:cabe/core/theme/app_colors.dart';
 import 'features/splash/screens/splash_screen.dart';
 
 void main() {
@@ -17,7 +16,7 @@ class MyApp extends StatelessWidget {
       title: 'CaBe - Cari Beasiswa',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: AppColors.blue500),
+        colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF0086FB)),
         textTheme: AppTextStyles.textTheme,
         useMaterial3: true,
       ),
