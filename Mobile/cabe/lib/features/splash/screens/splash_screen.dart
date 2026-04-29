@@ -1,16 +1,17 @@
 import 'package:flutter/material.dart';
 import 'dart:async';
-import '../theme/app_colors.dart';
-import 'home_screen.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:cabe/core/theme/app_colors.dart';
+import 'package:cabe/core/routing/main_navigation.dart';
 
-class SplashScreen extends StatefulWidget {
+class SplashScreen extends ConsumerStatefulWidget {
   const SplashScreen({super.key});
 
   @override
-  State<SplashScreen> createState() => _SplashScreenState();
+  ConsumerState<SplashScreen> createState() => _SplashScreenState();
 }
 
-class _SplashScreenState extends State<SplashScreen>
+class _SplashScreenState extends ConsumerState<SplashScreen>
     with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<Color?> _colorAnimation;
@@ -27,17 +28,17 @@ class _SplashScreenState extends State<SplashScreen>
     _colorAnimation = ColorTween(
       begin: AppColors.blue200,
       end: AppColors.white,
-    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
+    ).animate(CurvedAnimation(
+      parent: _controller,
+      curve: Curves.easeInOut,
+    ));
 
     _controller.forward();
 
     Timer(const Duration(seconds: 3), () {
       if (mounted) {
-        Navigator.of(
-          context,
-          // Ganti HomeScreen() menjadi HomePage()
-        ).pushReplacement(
-          MaterialPageRoute(builder: (_) => const HomeScreen()),
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(builder: (_) => const MainNavigation()),
         );
       }
     });

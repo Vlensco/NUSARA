@@ -1,26 +1,28 @@
 import 'package:flutter/material.dart';
-import 'views/splash_screen.dart';
-// HAPUS import 'views/home_page.dart'; karena menyebabkan error file not found
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:cabe/core/theme/app_text_styles.dart';
+import 'package:cabe/core/theme/app_colors.dart';
+import 'features/splash/screens/splash_screen.dart';
 
 void main() {
-  runApp(const CaBeApp());
+  runApp(const ProviderScope(child: MyApp()));
 }
 
-class CaBeApp extends StatelessWidget {
-  const CaBeApp({super.key});
+class MyApp extends StatelessWidget {
+  const MyApp({super.key});
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      debugShowCheckedModeBanner: false,
       title: 'CaBe - Cari Beasiswa',
+      debugShowCheckedModeBanner: false,
       theme: ThemeData(
+        colorScheme: ColorScheme.fromSeed(seedColor: AppColors.blue500),
+        textTheme: AppTextStyles.textTheme,
         useMaterial3: true,
-        colorSchemeSeed: const Color(0xFF001F3F),
       ),
-      // Gunakan SplashScreen sebagai awal,
-      // jangan panggil HomeScreen di sini karena alurnya: Splash -> Home
       home: const SplashScreen(),
     );
   }
 }
+
