@@ -3,6 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cabe/core/theme/app_colors.dart';
 import '../models/scholarship.dart';
 import '../providers/scholarship_provider.dart';
+import 'package:cabe/shared_widgets/app_tag.dart';
+import 'package:cabe/features/checklist/controllers/checklist_controller.dart';
+import 'package:cabe/core/routing/main_navigation.dart';
 
 class DetailBeasiswaPage extends ConsumerWidget {
   final Scholarship scholarship;
@@ -25,7 +28,7 @@ class DetailBeasiswaPage extends ConsumerWidget {
             // Header Section
             Container(
               width: double.infinity,
-              padding: const EdgeInsets.fromLTRB(20, 50, 20, 30),
+              padding: const EdgeInsets.fromLTRB(24, 50, 24, 30),
               decoration: const BoxDecoration(
                 color: AppColors.blue900,
                 borderRadius: BorderRadius.only(
@@ -103,7 +106,32 @@ class DetailBeasiswaPage extends ConsumerWidget {
                     width: double.infinity,
                     height: 45,
                     child: OutlinedButton(
-                      onPressed: () {},
+                      onPressed: () {
+                        final acronym = getAcronymForScholarshipId(currentScholarship.id);
+                        if (acronym != null) {
+                          ref.read(appliedScholarshipsProvider.notifier).add(acronym);
+                          // tidak set filter agar semua beasiswa yang didaftar muncul secara akumulatif
+                        }
+
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: const Text(
+                              'Berhasil didaftar! Silakan cek halaman Checklist untuk mempersiapkan dokumen.',
+                              style: TextStyle(color: Colors.white),
+                            ),
+                            backgroundColor: Colors.green.shade600,
+                            behavior: SnackBarBehavior.floating,
+                            duration: const Duration(seconds: 3),
+                          ),
+                        );
+
+                        Future.delayed(const Duration(milliseconds: 400), () {
+                          if (context.mounted) {
+                            ref.read(bottomNavIndexProvider.notifier).setIndex(1);
+                            Navigator.of(context).popUntil((route) => route.isFirst);
+                          }
+                        });
+                      },
                       style: ButtonStyle(
                         side: WidgetStateProperty.resolveWith((states) {
                           return const BorderSide(color: Colors.white);
@@ -143,7 +171,7 @@ class DetailBeasiswaPage extends ConsumerWidget {
 
             // Content Section
             Padding(
-              padding: const EdgeInsets.all(20),
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -191,21 +219,9 @@ class DetailBeasiswaPage extends ConsumerWidget {
                       spacing: 8,
                       runSpacing: 10,
                       children: currentScholarship.tags
-                          .map((tag) => Container(
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 14, vertical: 8),
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFFE6F0FA),
-                                  borderRadius: BorderRadius.circular(20),
-                                ),
-                                child: Text(
-                                  tag,
-                                  style: const TextStyle(
-                                    color: AppColors.blue900,
-                                    fontWeight: FontWeight.w600,
-                                    fontSize: 12,
-                                  ),
-                                ),
+                          .map((tag) => AppTag(
+                                label: tag,
+                                variant: AppTagVariant.lightBlue,
                               ))
                           .toList(),
                     ),

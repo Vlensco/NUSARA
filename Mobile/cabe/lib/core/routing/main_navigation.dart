@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:cabe/core/theme/app_colors.dart';
 import 'package:cabe/features/home/screens/home_screen.dart';
+import 'package:cabe/features/checklist/screens/checklist_screen.dart';
+import 'package:cabe/features/progress/screens/progress_screen.dart';
 
 class BottomNavIndexNotifier extends Notifier<int> {
   @override
@@ -27,7 +29,9 @@ class MainNavigation extends ConsumerWidget {
     return Scaffold(
       body: _buildBody(currentIndex),
       bottomNavigationBar: Container(
+        padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 24.0),
         decoration: BoxDecoration(
+          color: AppColors.white,
           boxShadow: [
             BoxShadow(
               color: Colors.black.withOpacity(0.05),
