@@ -3,6 +3,7 @@ import 'package:cabe/core/theme/app_colors.dart';
 import 'package:cabe/core/theme/app_text_styles.dart';
 import 'package:cabe/shared_widgets/app_chip.dart';
 import 'package:cabe/shared_widgets/app_badge.dart';
+import 'package:cabe/shared_widgets/app_tag.dart';
 
 class ScholarshipCard extends StatelessWidget {
   final String title;
@@ -39,9 +40,10 @@ class ScholarshipCard extends StatelessWidget {
           borderRadius: BorderRadius.circular(20),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.05),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
+              color: Colors.black.withOpacity(0.25),
+              blurRadius: 2,
+              spreadRadius: 0,
+              offset: const Offset(0, 2),
             ),
           ],
         ),
@@ -105,29 +107,16 @@ class ScholarshipCard extends StatelessWidget {
               spacing: 5,
               runSpacing: 5,
               children: tags
-                  .map((tag) => Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 4,
-                        ),
-                        decoration: BoxDecoration(
-                          color: Colors.black,
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: Text(
-                          tag,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 10,
-                          ),
-                        ),
+                  .map((tag) => AppTag(
+                        label: tag,
+                        variant: AppTagVariant.dark,
                       ))
                   .toList(),
             ),
 
             const SizedBox(height: 15),
 
-            // Footer: Badge cocok + Deadline
+            // Footer: Badge + Deadline
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [

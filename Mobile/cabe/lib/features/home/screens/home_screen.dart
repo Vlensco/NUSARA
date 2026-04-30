@@ -45,7 +45,7 @@ class HomeScreen extends ConsumerWidget {
               clipBehavior: Clip.none,
               children: [
                 Container(
-                  padding: const EdgeInsets.fromLTRB(20, 60, 20, 60),
+                  padding: const EdgeInsets.fromLTRB(24, 60, 24, 40),
                   decoration: const BoxDecoration(
                     color: AppColors.blue900,
                     borderRadius: BorderRadius.only(
@@ -85,15 +85,18 @@ class HomeScreen extends ConsumerWidget {
                 ),
                 Positioned(
                   bottom: -25,
-                  left: 20,
-                  right: 20,
+                  left: 24,
+                  right: 24,
                   child: Container(
                     decoration: BoxDecoration(
+                      color: AppColors.white,
+                      borderRadius: BorderRadius.circular(50),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withOpacity(0.05),
-                          blurRadius: 10,
-                          offset: const Offset(0, 5),
+                          color: Colors.black.withOpacity(0.25),
+                          blurRadius: 2,
+                          spreadRadius: 0,
+                          offset: const Offset(0, 2),
                         ),
                       ],
                     ),
@@ -132,7 +135,7 @@ class HomeScreen extends ConsumerWidget {
               padding: const EdgeInsets.only(top: 40, bottom: 8),
               child: SingleChildScrollView(
                 scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.symmetric(horizontal: 16),
+                padding: const EdgeInsets.symmetric(horizontal: 24),
                 child: Row(
                   children: List.generate(
                     categories.length,
@@ -156,7 +159,7 @@ class HomeScreen extends ConsumerWidget {
           SliverToBoxAdapter(
             child: Padding(
               padding: const EdgeInsets.symmetric(
-                horizontal: 20,
+                horizontal: 24,
                 vertical: 12,
               ),
               child: Row(
@@ -179,7 +182,7 @@ class HomeScreen extends ConsumerWidget {
 
           // Scholarship list
           SliverPadding(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 100),
+            padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
             sliver: SliverList(
               delegate: SliverChildBuilderDelegate(
                 (context, index) {
