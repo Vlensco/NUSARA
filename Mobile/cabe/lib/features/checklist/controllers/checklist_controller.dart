@@ -18,47 +18,34 @@ class ChecklistItem {
     this.isChecked = false,
   });
 
-  ChecklistItem copyWith({bool? isChecked}) {
+  ChecklistItem copyWith({bool? isChecked, List<ScholarshipTag>? tags}) {
     return ChecklistItem(
       id: id,
       title: title,
-      tags: tags,
+      tags: tags ?? this.tags,
       deadline: deadline,
       isChecked: isChecked ?? this.isChecked,
     );
   }
-
-  // ─── COMPUTED DISPLAY PROPERTIES ────────────────────────────────────────────
-  // Semua logika tampilan ada di sini, widget cukup pakai properti ini.
-
-  /// Warna teks judul item
   Color get titleColor => isChecked ? AppColors.gray900 : AppColors.gray500;
 
-  /// Ketebalan teks judul item
   FontWeight get titleWeight =>
       isChecked ? FontWeight.w600 : FontWeight.w400;
 
-  /// Warna border card
   Border? get cardBorder => isChecked
       ? null
       : Border.all(color: AppColors.coolGray200, width: 1);
 }
 
-// Model untuk tag beasiswa (label singkatan berwarna)
 class ScholarshipTag {
   final String label;
-  final int colorHex; // Hex warna background tag
+  final int colorHex;
 
   const ScholarshipTag({required this.label, required this.colorHex});
 
-  // ─── COMPUTED DISPLAY PROPERTIES ────────────────────────────────────────────
-
-  /// Warna vivid penuh (alpha selalu 0xFF)
   Color get vividColor => Color(colorHex | 0xFF000000);
 
-  /// Warna tag: vivid saat item sudah dicentang, abu-abu saat belum
-  Color tagColor({required bool isItemChecked}) =>
-      isItemChecked ? vividColor : AppColors.coolGray400;
+  Color tagColor({required bool isItemChecked}) => vividColor;
 }
 
 // Model untuk satu grup/section (misal: Esai, Dokumen, Video)
@@ -76,31 +63,39 @@ final _dummyChecklist = [
     items: [
       ChecklistItem(
         id: 'e1',
-        title: 'Esai Kepemimpinan',
-        tags: [ScholarshipTag(label: 'AI', colorHex: 0xFF6C63FF)],
-        deadline: '2 Juni 2026',
-        isChecked: true,
+        title: 'Esai motivasi (500 kata)',
+        tags: [ScholarshipTag(label: 'BUK', colorHex: 0xFF00A47D)],
+        deadline: '24 Juni 2026',
       ),
       ChecklistItem(
         id: 'e2',
-        title: 'Esai tentang semangat Inovasi',
-        tags: [ScholarshipTag(label: 'TF', colorHex: 0xFF2196F3)],
-        deadline: '8 Juni 2026',
-        isChecked: false,
+        title: 'Esai tentang visi pelestarian budaya',
+        tags: [ScholarshipTag(label: 'BSND', colorHex: 0xFF68417E)],
+        deadline: '11 Juni 2026',
       ),
       ChecklistItem(
         id: 'e3',
-        title: 'Esai tentang literasi keuangan',
-        tags: [ScholarshipTag(label: 'AI', colorHex: 0xFF6C63FF)],
-        deadline: '14 Juni 2026',
-        isChecked: true,
+        title: 'Esai tentang semangat inovasi',
+        tags: [ScholarshipTag(label: 'PPT', colorHex: 0xFFB7962A)],
+        deadline: '8 Juni 2026',
       ),
       ChecklistItem(
         id: 'e4',
-        title: 'Esai Motivasi',
-        tags: [ScholarshipTag(label: 'LPDP', colorHex: 0xFF607D8B)],
-        deadline: '24 Juni 2026',
-        isChecked: false,
+        title: 'Esai rencana studi',
+        tags: [ScholarshipTag(label: 'LPDP', colorHex: 0xFFE63333)],
+        deadline: '14 Juni 2026',
+      ),
+      ChecklistItem(
+        id: 'e5',
+        title: 'Esai tentang minat di bidang teknologi',
+        tags: [ScholarshipTag(label: 'AI', colorHex: 0xFFA729B3)],
+        deadline: '2 Juni 2026',
+      ),
+      ChecklistItem(
+        id: 'e6',
+        title: 'Esai kepemimpinan dan kontribusi sosial',
+        tags: [ScholarshipTag(label: 'TF', colorHex: 0xFF4AD743)],
+        deadline: '8 Juni 2026',
       ),
     ],
   ),
@@ -109,35 +104,33 @@ final _dummyChecklist = [
     items: [
       ChecklistItem(
         id: 'v1',
-        title: 'Dokumentasi Kegiatan Sosial',
-        tags: [ScholarshipTag(label: 'BSND', colorHex: 0xFF009688)],
-        deadline: '6 Juni 2026',
-        isChecked: false,
+        title: 'Pas foto 3x4',
+        tags: [ScholarshipTag(label: 'BUK', colorHex: 0xFF00A47D)],
+        deadline: '23 Juni 2026',
       ),
       ChecklistItem(
         id: 'v2',
-        title: 'Video Perkenalan (3 menit)',
-        tags: [ScholarshipTag(label: 'BSND', colorHex: 0xFF009688)],
-        deadline: '11 Juni 2026',
-        isChecked: false,
+        title: 'Foto aksi olahraga',
+        tags: [ScholarshipTag(label: 'BAPK', colorHex: 0xFFFE4820)],
+        deadline: '27 Juni 2026',
       ),
       ChecklistItem(
         id: 'v3',
-        title: 'Pas Foto',
-        tags: [
-          ScholarshipTag(label: 'BSND', colorHex: 0xFF009688),
-          ScholarshipTag(label: 'TF', colorHex: 0xFF2196F3),
-          ScholarshipTag(label: 'AI', colorHex: 0xFF6C63FF),
-        ],
-        deadline: '23 Juni 2026',
-        isChecked: true,
+        title: 'Video penampilan seni (5 menit)',
+        tags: [ScholarshipTag(label: 'BSND', colorHex: 0xFF68417E)],
+        deadline: '11 Juni 2026',
       ),
       ChecklistItem(
         id: 'v4',
-        title: 'Foto Aksi Olahraga',
-        tags: [ScholarshipTag(label: 'BAPK', colorHex: 0xFFE53935)],
-        deadline: '27 Juni 2026',
-        isChecked: true,
+        title: 'Dokumentasi proyek / usaha (jika ada)',
+        tags: [ScholarshipTag(label: 'PPT', colorHex: 0xFFB7962A)],
+        deadline: '8 Juni 2026',
+      ),
+      ChecklistItem(
+        id: 'v5',
+        title: 'Video perkenalan (3 menit)',
+        tags: [ScholarshipTag(label: 'TF', colorHex: 0xFF4AD743)],
+        deadline: '8 Juni 2026',
       ),
     ],
   ),
@@ -146,79 +139,106 @@ final _dummyChecklist = [
     items: [
       ChecklistItem(
         id: 'd1',
-        title: 'Surat Keterangan Tidak Mampu',
+        title: 'Fotokopi Rapor / Transkrip Nilai',
         tags: [
-          ScholarshipTag(label: 'LPDP', colorHex: 0xFF607D8B),
-          ScholarshipTag(label: 'TF', colorHex: 0xFF2196F3),
+          ScholarshipTag(label: 'BUK', colorHex: 0xFF00A47D),
+          ScholarshipTag(label: 'BAPK', colorHex: 0xFFFE4820),
+          ScholarshipTag(label: 'BSND', colorHex: 0xFF68417E),
+          ScholarshipTag(label: 'PPT', colorHex: 0xFFB7962A),
+          ScholarshipTag(label: 'LPDP', colorHex: 0xFFE63333),
+          ScholarshipTag(label: 'AI', colorHex: 0xFFA729B3),
+          ScholarshipTag(label: 'TF', colorHex: 0xFF4AD743),
         ],
-        deadline: '7 Juni 2026',
-        isChecked: false,
+        deadline: '2 Mei 2026',
       ),
       ChecklistItem(
         id: 'd2',
-        title: 'Portofolio Kegiatan Sosial',
-        tags: [ScholarshipTag(label: 'TF', colorHex: 0xFF2196F3)],
-        deadline: '7 Juni 2026',
-        isChecked: false,
+        title: 'Fotokopi KTP / Kartu Pelajar',
+        tags: [
+          ScholarshipTag(label: 'BUK', colorHex: 0xFF00A47D),
+          ScholarshipTag(label: 'LPDP', colorHex: 0xFFE63333),
+          ScholarshipTag(label: 'AI', colorHex: 0xFFA729B3),
+        ],
+        deadline: '9 Juni 2026',
       ),
       ChecklistItem(
         id: 'd3',
-        title: 'Fotokopi Kartu Pelajar',
-        tags: [ScholarshipTag(label: 'BAPK', colorHex: 0xFFE53935)],
-        deadline: '9 Juni 2026',
-        isChecked: false,
+        title: 'Surat rekomendasi kepala sekolah',
+        tags: [
+          ScholarshipTag(label: 'BUK', colorHex: 0xFF00A47D),
+          ScholarshipTag(label: 'AI', colorHex: 0xFFA729B3),
+        ],
+        deadline: '17 Juni 2026',
       ),
       ChecklistItem(
         id: 'd4',
-        title: 'Fotokopi Kartu Keluarga',
-        tags: [ScholarshipTag(label: 'BLK', colorHex: 0xFF795548)],
-        deadline: '9 Juni 2026',
-        isChecked: false,
+        title: 'Surat rekomendasi umum / dosen',
+        tags: [
+          ScholarshipTag(label: 'PPT', colorHex: 0xFFB7962A),
+          ScholarshipTag(label: 'TF', colorHex: 0xFF4AD743),
+        ],
+        deadline: '17 Juni 2026',
       ),
       ChecklistItem(
         id: 'd5',
-        title: 'Sertifikasi IELTS',
-        tags: [
-          ScholarshipTag(label: 'BLK', colorHex: 0xFF795548),
-          ScholarshipTag(label: 'AI', colorHex: 0xFF6C63FF),
-          ScholarshipTag(label: 'PPT', colorHex: 0xFFFF9800),
-        ],
-        deadline: '16 Juni 2026',
-        isChecked: false,
+        title: 'Surat rekomendasi KONI daerah',
+        tags: [ScholarshipTag(label: 'BAPK', colorHex: 0xFFFE4820)],
+        deadline: '17 Juni 2026',
       ),
       ChecklistItem(
         id: 'd6',
-        title: 'Surat Rekomendasi KONI Daerah',
-        tags: [ScholarshipTag(label: 'BAPK', colorHex: 0xFFE53935)],
-        deadline: '17 Juni 2026',
-        isChecked: false,
+        title: 'Sertifikat Prestasi / Medali Kejuaraan',
+        tags: [
+          ScholarshipTag(label: 'BUK', colorHex: 0xFF00A47D),
+          ScholarshipTag(label: 'BAPK', colorHex: 0xFFFE4820),
+          ScholarshipTag(label: 'BSND', colorHex: 0xFF68417E),
+        ],
+        deadline: '18 Juni 2026',
       ),
       ChecklistItem(
         id: 'd7',
-        title: 'Sertifikat / Medali Juara',
-        tags: [ScholarshipTag(label: 'BAPK', colorHex: 0xFFE53935)],
-        deadline: '18 Juni 2026',
-        isChecked: false,
+        title: 'CV / daftar riwayat hidup',
+        tags: [
+          ScholarshipTag(label: 'LPDP', colorHex: 0xFFE63333),
+          ScholarshipTag(label: 'AI', colorHex: 0xFFA729B3),
+        ],
+        deadline: '16 Juni 2026',
       ),
       ChecklistItem(
         id: 'd8',
-        title: 'Riwayat Prestasi Olahraga',
-        tags: [
-          ScholarshipTag(label: 'BAPK', colorHex: 0xFFE53935),
-          ScholarshipTag(label: 'PPT', colorHex: 0xFFFF9800),
-        ],
-        deadline: '31 Juni 2026',
-        isChecked: false,
+        title: 'Surat keterangan sehat',
+        tags: [ScholarshipTag(label: 'LPDP', colorHex: 0xFFE63333)],
+        deadline: '7 Juni 2026',
       ),
       ChecklistItem(
         id: 'd9',
-        title: 'Fotokopi Rapor',
-        tags: [
-          ScholarshipTag(label: 'LPDP', colorHex: 0xFF607D8B),
-          ScholarshipTag(label: 'BLK', colorHex: 0xFF795548),
-        ],
-        deadline: '2 Mei 2026',
-        isChecked: false,
+        title: 'SKCK',
+        tags: [ScholarshipTag(label: 'LPDP', colorHex: 0xFFE63333)],
+        deadline: '7 Juni 2026',
+      ),
+      ChecklistItem(
+        id: 'd10',
+        title: 'Riwayat prestasi olahraga',
+        tags: [ScholarshipTag(label: 'BAPK', colorHex: 0xFFFE4820)],
+        deadline: '31 Juni 2026',
+      ),
+      ChecklistItem(
+        id: 'd11',
+        title: 'Portofolio karya seni',
+        tags: [ScholarshipTag(label: 'BSND', colorHex: 0xFF68417E)],
+        deadline: '11 Juni 2026',
+      ),
+      ChecklistItem(
+        id: 'd12',
+        title: 'Proposal ide bisnis / proyek',
+        tags: [ScholarshipTag(label: 'PPT', colorHex: 0xFFB7962A)],
+        deadline: '8 Juni 2026',
+      ),
+      ChecklistItem(
+        id: 'd13',
+        title: 'Formulir pendaftaran',
+        tags: [ScholarshipTag(label: 'TF', colorHex: 0xFF4AD743)],
+        deadline: '8 Juni 2026',
       ),
     ],
   ),
@@ -249,3 +269,42 @@ final checklistProvider =
     NotifierProvider<ChecklistNotifier, List<ChecklistSection>>(
   ChecklistNotifier.new,
 );
+
+class ChecklistFilterNotifier extends Notifier<String?> {
+  @override
+  String? build() => null;
+
+  void setFilter(String? acronym) {
+    state = acronym;
+  }
+}
+
+final checklistFilterProvider = NotifierProvider<ChecklistFilterNotifier, String?>(
+  ChecklistFilterNotifier.new,
+);
+
+class AppliedScholarshipsNotifier extends Notifier<Set<String>> {
+  @override
+  Set<String> build() => {};
+
+  void add(String acronym) {
+    state = {...state, acronym};
+  }
+}
+
+final appliedScholarshipsProvider = NotifierProvider<AppliedScholarshipsNotifier, Set<String>>(
+  AppliedScholarshipsNotifier.new,
+);
+
+String? getAcronymForScholarshipId(String id) {
+  switch (id) {
+    case '1': return 'BUK';
+    case '2': return 'BAPK';
+    case '3': return 'BSND';
+    case '4': return 'PPT';
+    case '5': return 'LPDP';
+    case '6': return 'AI';
+    case '7': return 'TF';
+    default: return null;
+  }
+}
