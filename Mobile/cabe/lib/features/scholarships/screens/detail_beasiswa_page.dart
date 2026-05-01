@@ -42,11 +42,9 @@ class DetailBeasiswaPage extends ConsumerWidget {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      IconButton(
-                        onPressed: () => Navigator.pop(context),
-                        icon: const Icon(Icons.arrow_back, color: Colors.white),
-                        padding: EdgeInsets.zero,
-                        constraints: const BoxConstraints(),
+                      GestureDetector(
+                        onTap: () => Navigator.pop(context),
+                        child: const Icon(Icons.arrow_back, color: Colors.white),
                       ),
                       GestureDetector(
                         onTap: () {
@@ -109,28 +107,14 @@ class DetailBeasiswaPage extends ConsumerWidget {
                       onPressed: () {
                         final acronym = getAcronymForScholarshipId(currentScholarship.id);
                         if (acronym != null) {
-                          ref.read(appliedScholarshipsProvider.notifier).add(acronym);
-                          // tidak set filter agar semua beasiswa yang didaftar muncul secara akumulatif
-                        }
-
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: const Text(
-                              'Berhasil didaftar! Silakan cek halaman Checklist untuk mempersiapkan dokumen.',
-                              style: TextStyle(color: Colors.white),
-                            ),
-                            backgroundColor: Colors.green.shade600,
-                            behavior: SnackBarBehavior.floating,
-                            duration: const Duration(seconds: 3),
-                          ),
-                        );
-
-                        Future.delayed(const Duration(milliseconds: 400), () {
-                          if (context.mounted) {
-                            ref.read(bottomNavIndexProvider.notifier).setIndex(1);
-                            Navigator.of(context).popUntil((route) => route.isFirst);
+                          final appliedList = ref.read(appliedScholarshipsProvider);
+                          if (appliedList.contains(acronym)) {
+                            _showTopNotification(context, 'Anda sudah daftar beasiswa ini!', true);
+                          } else {
+                            ref.read(appliedScholarshipsProvider.notifier).add(acronym);
+                            _showTopNotification(context, 'Berhasil didaftar! Silakan cek halaman Checklist untuk mempersiapkan dokumen.', false);
                           }
-                        });
+                        }
                       },
                       style: ButtonStyle(
                         side: WidgetStateProperty.resolveWith((states) {
@@ -234,6 +218,74 @@ class DetailBeasiswaPage extends ConsumerWidget {
         ),
       ),
     );
+  }
+
+  void _showTopNotification(BuildContext context, String message, bool isError) {
+    final overlay = Overlay.of(context);
+    late OverlayEntry overlayEntry;
+
+    overlayEntry = OverlayEntry(
+      builder: (context) => Positioned(
+        top: MediaQuery.of(context).padding.top + 20,
+        left: 20,
+        right: 20,
+        child: Material(
+          color: Colors.transparent,
+          child: TweenAnimationBuilder<double>(
+            tween: Tween<double>(begin: -100, end: 0),
+            duration: const Duration(milliseconds: 300),
+            curve: Curves.easeOutBack,
+            builder: (context, value, child) {
+              return Transform.translate(
+                offset: Offset(0, value),
+                child: child,
+              );
+            },
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+              decoration: BoxDecoration(
+                color: isError ? Colors.orange.shade700 : Colors.green.shade600,
+                borderRadius: BorderRadius.circular(12),
+                boxShadow: const [
+                  BoxShadow(
+                    color: Colors.black26,
+                    blurRadius: 8,
+                    offset: Offset(0, 4),
+                  )
+                ],
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    isError ? Icons.info_outline : Icons.check_circle_outline,
+                    color: Colors.white,
+                    size: 24,
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      message,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    overlay.insert(overlayEntry);
+    Future.delayed(const Duration(seconds: 3), () {
+      if (overlayEntry.mounted) {
+        overlayEntry.remove();
+      }
+    });
   }
 
   Widget _buildSectionTitle(String title) {

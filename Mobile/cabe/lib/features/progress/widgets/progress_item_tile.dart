@@ -13,7 +13,9 @@ class ProgressItemTile extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return GestureDetector(
-      onTap: () => _showStatusDialog(context, ref),
+      onTap: item.status == ProgressStatus.ditinjau
+          ? () => _showStatusDialog(context, ref)
+          : null,
       child: Container(
         margin: const EdgeInsets.symmetric(vertical: 5),
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
@@ -91,7 +93,7 @@ class ProgressItemTile extends ConsumerWidget {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: Text('Ubah Status Beasiswa', style: AppTextStyles.h4),
         content: Text(
-          'Pilihah status beasiswa kamu apabila telah selesai melewati proses peninjauan!',
+          'Pilih status beasiswa kamu apabila telah selesai melewati proses peninjauan!',
           style: AppTextStyles.bodySmall,
         ),
         actions: [

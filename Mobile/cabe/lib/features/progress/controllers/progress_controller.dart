@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cabe/core/theme/app_colors.dart';
+import 'package:cabe/features/checklist/controllers/checklist_controller.dart';
 
-// ─── ENUM STATUS ─────────────────────────────────────────────────────────────
+// ENUM STATUS 
 enum ProgressStatus { tersimpan, ditinjau, diterima, ditolak }
 
-// ─── MODEL ───────────────────────────────────────────────────────────────────
+// MODEL
 class ProgressItem {
   final String id;
   final String title;
@@ -22,13 +23,13 @@ class ProgressItem {
     this.docsTotal,
   });
 
-  ProgressItem copyWith({ProgressStatus? status}) {
+  ProgressItem copyWith({ProgressStatus? status, int? docsUploaded, int? docsTotal}) {
     return ProgressItem(
       id: id,
       title: title,
       status: status ?? this.status,
-      docsUploaded: docsUploaded,
-      docsTotal: docsTotal,
+      docsUploaded: docsUploaded ?? this.docsUploaded,
+      docsTotal: docsTotal ?? this.docsTotal,
     );
   }
 
@@ -62,18 +63,18 @@ class ProgressItem {
     }
   }
 
-  /// Apakah menampilkan chevron (>) di kanan
+  /// Apakah menampilkan chevron (>) 
   bool get showChevron =>
       status == ProgressStatus.diterima || status == ProgressStatus.ditinjau;
 
-  /// Apakah menampilkan ikon alert (!) di kanan
+  /// Apakah menampilkan ikon alert (!)
   bool get showAlert => status == ProgressStatus.tersimpan;
 
-  /// Apakah menampilkan ikon X di kanan
+  /// Apakah menampilkan ikon X
   bool get showReject => status == ProgressStatus.ditolak;
 }
 
-// ─── FILTER ENUM ─────────────────────────────────────────────────────────────
+// FILTER ENUM 
 enum ProgressFilter { semua, tersimpan, ditinjau, diterima, ditolak }
 
 extension ProgressFilterLabel on ProgressFilter {
@@ -93,7 +94,7 @@ extension ProgressFilterLabel on ProgressFilter {
   }
 }
 
-// ─── STATE ───────────────────────────────────────────────────────────────────
+// STATE 
 class ProgressState {
   final List<ProgressItem> items;
   final ProgressFilter activeFilter;
@@ -119,85 +120,89 @@ class ProgressState {
   }
 }
 
-// ─── DATA DUMMY ──────────────────────────────────────────────────────────────
-final _dummyProgress = [
-  const ProgressItem(
-    id: 'p1',
-    title: 'TELADAN - Tanoto Foundation',
-    status: ProgressStatus.diterima,
-  ),
-  const ProgressItem(
-    id: 'p2',
-    title: 'Beasiswa Unggulan Kemendikbud',
-    status: ProgressStatus.diterima,
-  ),
-  const ProgressItem(
-    id: 'p3',
-    title: 'Pertamina Foundation Bright',
-    status: ProgressStatus.ditinjau,
-  ),
-  const ProgressItem(
-    id: 'p4',
-    title: 'Beasiswa Atlet Berprestasi KONI',
-    status: ProgressStatus.tersimpan,
-    docsUploaded: 0,
-    docsTotal: 7,
-  ),
-  const ProgressItem(
-    id: 'p5',
-    title: 'Beasiswa Seni Budaya Nusantara',
-    status: ProgressStatus.tersimpan,
-    docsUploaded: 1,
-    docsTotal: 4,
-  ),
-  const ProgressItem(
-    id: 'p6',
-    title: 'Paragon Scholarship for Future Leaders',
-    status: ProgressStatus.tersimpan,
-    docsUploaded: 0,
-    docsTotal: 4,
-  ),
-  const ProgressItem(
-    id: 'p7',
-    title: 'LPDP Beasiswa Reguler',
-    status: ProgressStatus.tersimpan,
-    docsUploaded: 0,
-    docsTotal: 3,
-  ),
-  const ProgressItem(
-    id: 'p8',
-    title: 'Beasiswa Astra 1st',
-    status: ProgressStatus.tersimpan,
-    docsUploaded: 0,
-    docsTotal: 5,
-  ),
-  const ProgressItem(
-    id: 'p9',
-    title: 'Beasiswa Bank Indonesia',
-    status: ProgressStatus.ditolak,
-  ),
-  const ProgressItem(
-    id: 'p10',
-    title: 'Sampoerna Foundation Scholarship',
-    status: ProgressStatus.ditolak,
-  ),
-];
+// MAPPING ACRONYM KE DATA BEASISWA 
+const _acronymToTitle = {
+  'BUK': 'Beasiswa Unggulan Kemendikbud',
+  'BAPK': 'Beasiswa Atlet Berprestasi KONI',
+  'BSND': 'Beasiswa Seni Budaya Nusantara',
+  'PPT': 'Paragon for Future Leaders',
+  'LPDP': 'LPDP Beasiswa Reguler',
+  'AI': 'Beasiswa Astra 1st',
+  'TF': 'TELADAN - Tanoto Foundation',
+};
 
-// ─── NOTIFIER ────────────────────────────────────────────────────────────────
+// NOTIFIER 
 class ProgressNotifier extends Notifier<ProgressState> {
+  // Menyimpan status yang sudah diubah manual oleh user
+  final Map<String, ProgressStatus> _manualStatuses = {};
+
   @override
-  ProgressState build() => ProgressState(items: _dummyProgress);
+  ProgressState build() {
+    final applied = ref.watch(appliedScholarshipsProvider);
+    final checklistSections = ref.watch(checklistProvider);
+
+    final items = applied.map((acronym) {
+      final title = _acronymToTitle[acronym] ?? acronym;
+
+      // Hitung total & checked dokumen per acronym
+      int totalDocs = 0;
+      int checkedDocs = 0;
+      for (final section in checklistSections) {
+        for (final item in section.items) {
+          if (item.tags.any((tag) => tag.label == acronym)) {
+            totalDocs++;
+            if (item.isChecked) {
+              checkedDocs++;
+            }
+          }
+        }
+      }
+
+      // Cek apakah user sudah mengubah statusnya secara manual
+      if (_manualStatuses.containsKey(acronym)) {
+        return ProgressItem(
+          id: acronym,
+          title: title,
+          status: _manualStatuses[acronym]!,
+          docsUploaded: checkedDocs,
+          docsTotal: totalDocs,
+        );
+      }
+
+      // Tentukan status otomatis berdasarkan kelengkapan dokumen
+      ProgressStatus status;
+      if (totalDocs > 0 && checkedDocs == totalDocs) {
+        status = ProgressStatus.ditinjau;
+      } else {
+        status = ProgressStatus.tersimpan;
+      }
+
+      return ProgressItem(
+        id: acronym,
+        title: title,
+        status: status,
+        docsUploaded: checkedDocs,
+        docsTotal: totalDocs,
+      );
+    }).toList();
+
+    ProgressFilter currentFilter;
+    try {
+      currentFilter = state.activeFilter;
+    } catch (_) {
+      currentFilter = ProgressFilter.semua;
+    }
+
+    return ProgressState(items: items, activeFilter: currentFilter);
+  }
 
   void setFilter(ProgressFilter filter) {
     state = state.copyWith(activeFilter: filter);
   }
 
   void updateStatus(String itemId, ProgressStatus newStatus) {
-    final updatedItems = state.items.map((item) {
-      if (item.id == itemId) return item.copyWith(status: newStatus);
-      return item;
-    }).toList();
-    state = state.copyWith(items: updatedItems);
+    _manualStatuses[itemId] = newStatus;
+    ref.invalidateSelf();
   }
 }
 

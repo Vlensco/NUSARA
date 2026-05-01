@@ -36,10 +36,12 @@ dependencies:
   cupertino_icons: ^1.0.8
   flutter_riverpod: ^3.3.1
   lucide_icons: ^0.257.0
+  flutter_native_splash: ^2.4.4
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
+  flutter_launcher_icons: ^0.13.1
 
   # The "flutter_lints" package below contains a set of recommended lints to
   # encourage good coding practices. The lint set provided by the package is
@@ -60,4 +62,19 @@ flutter:
   uses-material-design: true
 
   assets:
-    - assets/logo_cabe.png
+    - assets/logo/logo_cabe_0.png
+    - assets/logo/logo_cabe_1.png
+
+flutter_icons:
+  android: true
+  ios: true
+  image_path: "assets/logo/icon_cabe.png"
+  adaptive_icon_background: "#FFFFFF"
+  adaptive_icon_foreground: "assets/logo/icon_cabe.png"
+
+flutter_native_splash:
+  color: "#C2D3FF"
+  android: true
+  ios: true
+  android_12:
+    color: "#C2D3FF"

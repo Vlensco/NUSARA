@@ -8,55 +8,68 @@ import 'package:cabe/shared_widgets/app_button.dart';
 import 'package:cabe/core/routing/main_navigation.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 
-class ChecklistScreen extends ConsumerWidget {
+class ChecklistScreen extends ConsumerStatefulWidget {
   const ChecklistScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final rawSections = ref.watch(checklistProvider);
-    final filter = ref.watch(checklistFilterProvider);
+  ConsumerState<ChecklistScreen> createState() => _ChecklistScreenState();
+}
+
+class _ChecklistScreenState extends ConsumerState<ChecklistScreen> {
+
+  static const _acronymToFullName = {
+    'BUK': 'Beasiswa Unggulan',
+    'BAPK': 'Beasiswa Atlet Berprestasi',
+    'BSND': 'Beasiswa Seni Budaya',
+    'PPT': 'Paragon Future Leaders',
+    'LPDP': 'LPDP Beasiswa Reguler',
+    'AI': 'Beasiswa Astra 1st',
+    'TF': 'TELADAN Tanoto Foundation',
+  };
+
+  @override
+  Widget build(BuildContext context) {
     final applied = ref.watch(appliedScholarshipsProvider);
+    final viewState = ref.watch(checklistViewProvider);
     final notifier = ref.read(checklistProvider.notifier);
+
+    // perubahan pada completedScholarshipsProvider untuk memunculkan toast
+    ref.listen(completedScholarshipsProvider, (previous, next) {
+      if (previous == null) return;
+      
+      final newlyCompleted = next.where((acronym) {
+        // Cek apakah baru saja selesai dan belum di-toast
+        return !previous.contains(acronym) && !notifier.hasBeenToasted(acronym);
+      }).toList();
+
+      if (newlyCompleted.isNotEmpty) {
+        for (final acronym in newlyCompleted) {
+          notifier.markAsToasted(acronym);
+        }
+        _showCompletionToast(newlyCompleted);
+      }
+
+      // Jika ada beasiswa yang statusnya tidak lengkap, hapus dari list toasted
+      final unchecked = previous.where((acronym) => !next.contains(acronym));
+      for (final acronym in unchecked) {
+        notifier.unmarkAsToasted(acronym);
+      }
+    });
 
     if (applied.isEmpty) {
       return Scaffold(
         backgroundColor: AppColors.coolGray100,
         body: SafeArea(
-          child: _buildEmptyState(context, ref),
+          child: _buildEmptyState(context),
         ),
       );
     }
 
-    List<ChecklistSection> sections = rawSections;
-    if (filter != null) {
-      sections = rawSections.map((section) {
-        return ChecklistSection(
-          title: section.title,
-          items: section.items
-              .where((item) => item.tags.any((tag) => tag.label == filter))
-              .map((item) => item.copyWith(
-                    tags: item.tags.where((tag) => applied.contains(tag.label)).toList(),
-                  ))
-              .toList(),
-        );
-      }).where((section) => section.items.isNotEmpty).toList();
-    } else {
-      sections = rawSections.map((section) {
-        return ChecklistSection(
-          title: section.title,
-          items: section.items
-              .where((item) => item.tags.any((tag) => applied.contains(tag.label)))
-              .map((item) => item.copyWith(
-                    tags: item.tags.where((tag) => applied.contains(tag.label)).toList(),
-                  ))
-              .toList(),
-        );
-      }).where((section) => section.items.isNotEmpty).toList();
-    }
-
-    final total = sections.fold(0, (sum, s) => sum + s.items.length);
-    final checked = sections.fold(0, (sum, s) => sum + s.items.where((i) => i.isChecked).length);
-    final progress = total == 0 ? 0.0 : checked / total;
+    final sections = viewState.sections;
+    final total = viewState.total;
+    final checked = viewState.checked;
+    final progress = viewState.progress;
+    final isAllCompleted = viewState.isAllCompleted;
 
     return Scaffold(
       backgroundColor: AppColors.coolGray100,
@@ -84,7 +97,7 @@ class ChecklistScreen extends ConsumerWidget {
                       Text(
                         '${(progress * 100).round()}%',
                         style: AppTextStyles.labelSmall.copyWith(
-                          color: AppColors.coolGray500,
+                          color: isAllCompleted ? Colors.green.shade700 : AppColors.coolGray500,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
@@ -98,8 +111,8 @@ class ChecklistScreen extends ConsumerWidget {
                       value: progress,
                       minHeight: 6,
                       backgroundColor: AppColors.coolGray200,
-                      valueColor: const AlwaysStoppedAnimation<Color>(
-                        AppColors.blue900,
+                      valueColor: AlwaysStoppedAnimation<Color>(
+                        isAllCompleted ? Colors.green : AppColors.blue900,
                       ),
                     ),
                   ),
@@ -138,7 +151,105 @@ class ChecklistScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildEmptyState(BuildContext context, WidgetRef ref) {
+  void _showCompletionToast(List<String> acronyms) {
+    final overlay = Overlay.of(context);
+    late OverlayEntry overlayEntry;
+
+    // Buat list teks per beasiswa
+    final lines = acronyms.map((acronym) {
+      final fullName = _acronymToFullName[acronym] ?? acronym;
+      return 'Dokumen $fullName ($acronym) sudah lengkap!';
+    }).toList();
+
+    overlayEntry = OverlayEntry(
+      builder: (context) => Positioned(
+        top: MediaQuery.of(context).padding.top + 20,
+        left: 24,
+        right: 24,
+        child: Material(
+          color: Colors.transparent,
+          child: TweenAnimationBuilder<double>(
+            tween: Tween<double>(begin: -100, end: 0),
+            duration: const Duration(milliseconds: 300),
+            curve: Curves.easeOutBack,
+            builder: (context, value, child) {
+              return Transform.translate(
+                offset: Offset(0, value),
+                child: child,
+              );
+            },
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+              decoration: BoxDecoration(
+                color: const Color(0xFF16A34A), // Warna hijau success
+                borderRadius: BorderRadius.circular(12),
+                boxShadow: const [
+                  BoxShadow(
+                    color: Colors.black26,
+                    blurRadius: 8,
+                    offset: Offset(0, 4),
+                  )
+                ],
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.2),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Icon(
+                      LucideIcons.partyPopper,
+                      color: Colors.white,
+                      size: 22,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        ...lines.map((line) => Padding(
+                              padding: const EdgeInsets.only(bottom: 2),
+                              child: Text(
+                                line,
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            )),
+                        const SizedBox(height: 4),
+                        const Text(
+                          'Cek halaman Progress untuk status peninjauan.',
+                          style: TextStyle(
+                            color: Colors.white70,
+                            fontSize: 11,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    overlay.insert(overlayEntry);
+    Future.delayed(const Duration(seconds: 4), () {
+      if (overlayEntry.mounted) {
+        overlayEntry.remove();
+      }
+    });
+  }
+
+  Widget _buildEmptyState(BuildContext context) {
     return Center(
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 24.0),
