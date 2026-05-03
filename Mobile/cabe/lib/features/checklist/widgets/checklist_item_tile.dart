@@ -70,7 +70,7 @@ class ChecklistItemTile extends StatelessWidget {
       margin: const EdgeInsets.only(right: 4),
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
       decoration: BoxDecoration(
-        // ✅ Panggil tagColor() dari model, kirim konteks isChecked
+        // Panggil tagColor() dari model, kirim konteks isChecked
         color: tag.tagColor(isItemChecked: item.isChecked),
         borderRadius: BorderRadius.circular(4),
       ),

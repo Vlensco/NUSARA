@@ -245,8 +245,21 @@ final _dummyChecklist = [
 ];
 
 class ChecklistNotifier extends Notifier<List<ChecklistSection>> {
+  // Simpan state toast di controller agar tidak kereset saat pindah halaman
+  final Set<String> _toastedAcronyms = {};
+
   @override
   List<ChecklistSection> build() => _dummyChecklist;
+
+  bool hasBeenToasted(String acronym) => _toastedAcronyms.contains(acronym);
+  
+  void markAsToasted(String acronym) {
+    _toastedAcronyms.add(acronym);
+  }
+
+  void unmarkAsToasted(String acronym) {
+    _toastedAcronyms.remove(acronym);
+  }
 
   void toggleItem(String itemId) {
     state = state.map((section) {
@@ -308,3 +321,91 @@ String? getAcronymForScholarshipId(String id) {
     default: return null;
   }
 }
+
+class ChecklistViewState {
+  final List<ChecklistSection> sections;
+  final int total;
+  final int checked;
+  final double progress;
+  final bool isAllCompleted;
+
+  ChecklistViewState({
+    required this.sections,
+    required this.total,
+    required this.checked,
+    required this.progress,
+    required this.isAllCompleted,
+  });
+}
+
+final checklistViewProvider = Provider<ChecklistViewState>((ref) {
+  final rawSections = ref.watch(checklistProvider);
+  final filter = ref.watch(checklistFilterProvider);
+  final applied = ref.watch(appliedScholarshipsProvider);
+
+  List<ChecklistSection> sections = rawSections;
+  if (filter != null) {
+    sections = rawSections.map((section) {
+      return ChecklistSection(
+        title: section.title,
+        items: section.items
+            .where((item) => item.tags.any((tag) => tag.label == filter))
+            .map((item) => item.copyWith(
+                  tags: item.tags.where((tag) => applied.contains(tag.label)).toList(),
+                ))
+            .toList(),
+      );
+    }).where((section) => section.items.isNotEmpty).toList();
+  } else {
+    sections = rawSections.map((section) {
+      return ChecklistSection(
+        title: section.title,
+        items: section.items
+            .where((item) => item.tags.any((tag) => applied.contains(tag.label)))
+            .map((item) => item.copyWith(
+                  tags: item.tags.where((tag) => applied.contains(tag.label)).toList(),
+                ))
+            .toList(),
+      );
+    }).where((section) => section.items.isNotEmpty).toList();
+  }
+
+  final total = sections.fold(0, (sum, s) => sum + s.items.length);
+  final checked = sections.fold(0, (sum, s) => sum + s.items.where((i) => i.isChecked).length);
+  final progress = total == 0 ? 0.0 : checked / total;
+  final isAllCompleted = total > 0 && progress >= 1.0;
+
+  return ChecklistViewState(
+    sections: sections,
+    total: total,
+    checked: checked,
+    progress: progress,
+    isAllCompleted: isAllCompleted,
+  );
+});
+
+final completedScholarshipsProvider = Provider<List<String>>((ref) {
+  final rawSections = ref.watch(checklistProvider);
+  final applied = ref.watch(appliedScholarshipsProvider);
+  final completed = <String>[];
+
+  for (final acronym in applied) {
+    int total = 0;
+    int checked = 0;
+    
+    for (final section in rawSections) {
+      for (final item in section.items) {
+        if (item.tags.any((tag) => tag.label == acronym)) {
+          total++;
+          if (item.isChecked) checked++;
+        }
+      }
+    }
+    
+    if (total > 0 && checked == total) {
+      completed.add(acronym);
+    }
+  }
+  
+  return completed;
+});

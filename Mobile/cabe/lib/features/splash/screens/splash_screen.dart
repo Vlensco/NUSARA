@@ -1,47 +1,61 @@
 import 'package:flutter/material.dart';
-import 'dart:async';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:cabe/core/theme/app_colors.dart';
 import 'package:cabe/core/routing/main_navigation.dart';
+import 'package:cabe/core/theme/app_colors.dart';
 
-class SplashScreen extends ConsumerStatefulWidget {
+class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
 
   @override
-  ConsumerState<SplashScreen> createState() => _SplashScreenState();
+  State<SplashScreen> createState() => _SplashScreenState();
 }
 
-class _SplashScreenState extends ConsumerState<SplashScreen>
-    with SingleTickerProviderStateMixin {
+class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderStateMixin {
+  int _step = 0;
   late AnimationController _controller;
-  late Animation<Color?> _colorAnimation;
+  late Animation<double> _scaleAnimation;
 
   @override
   void initState() {
     super.initState();
 
     _controller = AnimationController(
-      duration: const Duration(seconds: 5),
+      duration: const Duration(milliseconds: 600),
       vsync: this,
     );
 
-    _colorAnimation = ColorTween(
-      begin: AppColors.blue200,
-      end: AppColors.white,
-    ).animate(CurvedAnimation(
-      parent: _controller,
-      curve: Curves.easeInOut,
-    ));
+    _scaleAnimation = Tween<double>(begin: 0.5, end: 1.0).animate(
+      CurvedAnimation(
+        parent: _controller,
+        curve: Curves.easeOutBack,
+      ),
+    );
 
-    _controller.forward();
+    _startSequence();
+  }
 
-    Timer(const Duration(seconds: 3), () {
-      if (mounted) {
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (_) => const MainNavigation()),
-        );
-      }
-    });
+  void _startSequence() async {
+    // Step 0: Light blue
+    await Future.delayed(const Duration(milliseconds: 400));
+
+    // Step 1: Dark blue 
+    if (mounted) {
+      setState(() => _step = 1);
+      _controller.forward(from: 0.0);
+    }
+    await Future.delayed(const Duration(milliseconds: 1500));
+
+    // Step 2: White background 
+    if (mounted) {
+      setState(() => _step = 2);
+      _controller.forward(from: 0.8);
+    }
+    await Future.delayed(const Duration(milliseconds: 1500));
+
+    if (mounted) {
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(builder: (_) => const MainNavigation()),
+      );
+    }
   }
 
   @override
@@ -52,21 +66,63 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
 
   @override
   Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: _colorAnimation,
-      builder: (context, child) {
-        return Scaffold(
-          backgroundColor: _colorAnimation.value,
-          body: Center(
-            child: Image.asset(
-              'assets/logo_cabe.png',
-              width: 320,
-              height: 320,
-              fit: BoxFit.contain,
-            ),
+    Color bgColor;
+    Widget child;
+
+    if (_step == 0) {
+      bgColor = AppColors.blue200;
+      child = const SizedBox(key: ValueKey('empty'));
+    } else if (_step == 1) {
+      bgColor = AppColors.blue900;
+      child = AnimatedBuilder(
+        key: const ValueKey('logo_white'),
+        animation: _scaleAnimation,
+        builder: (context, child) {
+          return Transform.scale(
+            scale: _scaleAnimation.value,
+            child: child,
+          );
+        },
+        child: Image.asset(
+          'assets/logo/logo_cabe_0.png',
+          width: 220, 
+          fit: BoxFit.contain,
+        ),
+      );
+    } else {
+      bgColor = AppColors.white;
+      child = AnimatedBuilder(
+        key: const ValueKey('logo_colored'),
+        animation: _scaleAnimation,
+        builder: (context, child) {
+          return Transform.scale(
+            scale: _scaleAnimation.value,
+            child: child,
+          );
+        },
+        child: Image.asset(
+          'assets/logo/logo_cabe_1.png',
+          width: 320, 
+          fit: BoxFit.contain,
+        ),
+      );
+    }
+
+    return Scaffold(
+      body: AnimatedContainer(
+        duration: const Duration(milliseconds: 500),
+        curve: Curves.easeInOut,
+        color: bgColor,
+        child: Center(
+          child: AnimatedSwitcher(
+            duration: const Duration(milliseconds: 500),
+            transitionBuilder: (Widget child, Animation<double> animation) {
+              return FadeTransition(opacity: animation, child: child);
+            },
+            child: child,
           ),
-        );
-      },
+        ),
+      ),
     );
   }
 }
