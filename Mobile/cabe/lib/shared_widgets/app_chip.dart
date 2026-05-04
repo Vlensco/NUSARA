@@ -22,20 +22,24 @@ class AppChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: variant == AppChipVariant.disabled ? null : onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-        decoration: BoxDecoration(
-          color: _backgroundColor,
-          borderRadius: BorderRadius.circular(borderRadius),
-          border: _border,
-        ),
-        child: Text(
-          label,
-          style: AppTextStyles.bodySmall.copyWith(
-            color: _textColor,
-            fontWeight: FontWeight.w500,
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: variant == AppChipVariant.disabled ? null : onTap,
+        borderRadius: BorderRadius.circular(borderRadius),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+          decoration: BoxDecoration(
+            color: _backgroundColor,
+            borderRadius: BorderRadius.circular(borderRadius),
+            border: _border,
+          ),
+          child: Text(
+            label,
+            style: AppTextStyles.bodySmall.copyWith(
+              color: _textColor,
+              fontWeight: FontWeight.w500,
+            ),
           ),
         ),
       ),

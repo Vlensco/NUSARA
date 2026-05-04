@@ -6,6 +6,7 @@ import 'package:cabe/features/home/screens/home_screen.dart';
 import 'package:cabe/features/checklist/screens/checklist_screen.dart';
 import 'package:cabe/features/progress/screens/progress_screen.dart';
 import 'package:cabe/features/notifikasi/screens/notifikasi_screen.dart';
+import 'package:cabe/features/profile/screens/profile_screen.dart';
 
 class BottomNavIndexNotifier extends Notifier<int> {
   @override
@@ -104,7 +105,7 @@ class MainNavigation extends ConsumerWidget {
       case 3:
         return const NotifikasiScreen();
       case 4:
-        return const Center(child: Text('Profil Screen'));
+        return const ProfileScreen();
       default:
         return const HomeScreen();
     }
