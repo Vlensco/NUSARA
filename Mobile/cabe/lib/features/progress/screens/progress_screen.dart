@@ -15,9 +15,9 @@ class ProgressScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final applied = ref.watch(appliedScholarshipsProvider);
+    final state = ref.watch(progressProvider);
 
-    if (applied.isEmpty) {
+    if (state.items.isEmpty) {
       return Scaffold(
         backgroundColor: AppColors.coolGray100,
         body: SafeArea(
@@ -26,7 +26,6 @@ class ProgressScreen extends ConsumerWidget {
       );
     }
 
-    final state = ref.watch(progressProvider);
     final notifier = ref.read(progressProvider.notifier);
     final filtered = state.filteredItems;
 

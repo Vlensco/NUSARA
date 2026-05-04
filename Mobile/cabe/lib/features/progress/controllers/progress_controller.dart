@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cabe/core/theme/app_colors.dart';
 import 'package:cabe/features/checklist/controllers/checklist_controller.dart';
+import 'package:cabe/features/scholarships/providers/scholarship_provider.dart';
 
 // ENUM STATUS 
 enum ProgressStatus { tersimpan, ditinjau, diterima, ditolak }
@@ -11,9 +12,9 @@ class ProgressItem {
   final String id;
   final String title;
   final ProgressStatus status;
-  // Khusus status tersimpan: berapa dokumen kurang
   final int? docsUploaded;
   final int? docsTotal;
+  final bool isApplied;
 
   const ProgressItem({
     required this.id,
@@ -21,15 +22,17 @@ class ProgressItem {
     required this.status,
     this.docsUploaded,
     this.docsTotal,
+    this.isApplied = true,
   });
 
-  ProgressItem copyWith({ProgressStatus? status, int? docsUploaded, int? docsTotal}) {
+  ProgressItem copyWith({ProgressStatus? status, int? docsUploaded, int? docsTotal, bool? isApplied}) {
     return ProgressItem(
       id: id,
       title: title,
       status: status ?? this.status,
       docsUploaded: docsUploaded ?? this.docsUploaded,
       docsTotal: docsTotal ?? this.docsTotal,
+      isApplied: isApplied ?? this.isApplied,
     );
   }
 
@@ -39,6 +42,9 @@ class ProgressItem {
   String get subtitle {
     switch (status) {
       case ProgressStatus.tersimpan:
+        if (!isApplied) {
+          return 'Segera daftar beasiswa di halaman beasiswa';
+        }
         return 'Dokumen masih kurang ${docsUploaded ?? 0}/${docsTotal ?? 0}! Segera lengkapi';
       case ProgressStatus.ditinjau:
         return 'Dokumen dalam tahap peninjauan!';
@@ -140,8 +146,21 @@ class ProgressNotifier extends Notifier<ProgressState> {
   ProgressState build() {
     final applied = ref.watch(appliedScholarshipsProvider);
     final checklistSections = ref.watch(checklistProvider);
+    final allScholarships = ref.watch(scholarshipProvider);
 
-    final items = applied.map((acronym) {
+    final Set<String> allAcronyms = {...applied};
+
+    // Tambahkan beasiswa yang isSaved == true
+    for (final s in allScholarships) {
+      if (s.isSaved) {
+        final acronym = _acronymToTitle.entries
+            .firstWhere((e) => e.value == s.title, orElse: () => MapEntry(s.title, s.title))
+            .key;
+        allAcronyms.add(acronym);
+      }
+    }
+
+    final items = allAcronyms.map((acronym) {
       final title = _acronymToTitle[acronym] ?? acronym;
 
       // Hitung total & checked dokumen per acronym
@@ -166,6 +185,7 @@ class ProgressNotifier extends Notifier<ProgressState> {
           status: _manualStatuses[acronym]!,
           docsUploaded: checkedDocs,
           docsTotal: totalDocs,
+          isApplied: applied.contains(acronym),
         );
       }
 
@@ -183,6 +203,7 @@ class ProgressNotifier extends Notifier<ProgressState> {
         status: status,
         docsUploaded: checkedDocs,
         docsTotal: totalDocs,
+        isApplied: applied.contains(acronym),
       );
     }).toList();
 
