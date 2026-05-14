@@ -36,10 +36,14 @@ dependencies:
   cupertino_icons: ^1.0.8
   flutter_riverpod: ^3.3.1
   lucide_icons: ^0.257.0
+  flutter_native_splash: ^2.4.4
+  supabase_flutter: ^2.12.4
+  flutter_dotenv: ^6.0.1
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
+  flutter_launcher_icons: ^0.13.1
 
   # The "flutter_lints" package below contains a set of recommended lints to
   # encourage good coding practices. The lint set provided by the package is
@@ -60,4 +64,30 @@ flutter:
   uses-material-design: true
 
   assets:
-    - assets/logo_cabe.png
+    - .env
+    - assets/logo/logo_cabe_0.png
+    - assets/logo/logo_cabe_1.png
+    - assets/onboarding/onboarding1.png
+    - assets/onboarding/onboarding2.png
+    - assets/onboarding/onboarding3.png
+    - assets/onboarding/bgonboarding1.png
+    - assets/onboarding/bgonboarding2.png
+    - assets/onboarding/bgonboarding3.png
+    - assets/login/headerlogin.png
+    - assets/login/login1.png
+    - assets/login/facebook.png
+    - assets/login/google.png
+
+flutter_icons:
+  android: true
+  ios: true
+  image_path: "assets/logo/icon_cabe.png"
+  adaptive_icon_background: "#FFFFFF"
+  adaptive_icon_foreground: "assets/logo/icon_cabe.png"
+
+flutter_native_splash:
+  color: "#C2D3FF"
+  android: true
+  ios: true
+  android_12:
+    color: "#C2D3FF"

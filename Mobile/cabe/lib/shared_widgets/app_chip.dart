@@ -9,6 +9,7 @@ class AppChip extends StatelessWidget {
   final AppChipVariant variant;
   final VoidCallback? onTap;
   final bool isSelected;
+  final double borderRadius;
 
   const AppChip({
     super.key,
@@ -16,24 +17,29 @@ class AppChip extends StatelessWidget {
     this.variant = AppChipVariant.light,
     this.onTap,
     this.isSelected = false,
+    this.borderRadius = 20,
   });
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: variant == AppChipVariant.disabled ? null : onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-        decoration: BoxDecoration(
-          color: _backgroundColor,
-          borderRadius: BorderRadius.circular(100),
-          border: _border,
-        ),
-        child: Text(
-          label,
-          style: AppTextStyles.bodySmall.copyWith(
-            color: _textColor,
-            fontWeight: FontWeight.w500,
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: variant == AppChipVariant.disabled ? null : onTap,
+        borderRadius: BorderRadius.circular(borderRadius),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+          decoration: BoxDecoration(
+            color: _backgroundColor,
+            borderRadius: BorderRadius.circular(borderRadius),
+            border: _border,
+          ),
+          child: Text(
+            label,
+            style: AppTextStyles.bodySmall.copyWith(
+              color: _textColor,
+              fontWeight: FontWeight.w500,
+            ),
           ),
         ),
       ),
