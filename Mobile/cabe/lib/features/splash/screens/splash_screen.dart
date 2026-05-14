@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:cabe/core/routing/main_navigation.dart';
+import 'package:cabe/features/onboarding/screens/onboarding_screen.dart';
 import 'package:cabe/core/theme/app_colors.dart';
 
 class SplashScreen extends StatefulWidget {
@@ -53,7 +53,7 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
 
     if (mounted) {
       Navigator.of(context).pushReplacement(
-        MaterialPageRoute(builder: (_) => const MainNavigation()),
+        MaterialPageRoute(builder: (_) => const OnboardingScreen()),
       );
     }
   }
