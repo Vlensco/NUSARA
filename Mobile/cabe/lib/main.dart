@@ -4,9 +4,22 @@ import 'package:cabe/core/theme/app_text_styles.dart';
 import 'package:flutter_native_splash/flutter_native_splash.dart';
 import 'package:cabe/features/splash/screens/splash_screen.dart';
 
-void main() {
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+
+void main() async {
   WidgetsBinding widgetsBinding = WidgetsFlutterBinding.ensureInitialized();
   FlutterNativeSplash.preserve(widgetsBinding: widgetsBinding);
+
+  // Load env file
+  await dotenv.load(fileName: ".env");
+
+  // Supabase Initialization
+  await Supabase.initialize(
+    url: dotenv.env['SUPABASE_URL']!,
+    anonKey: dotenv.env['SUPABASE_ANON_KEY']!,
+  );
+
   runApp(const ProviderScope(child: MyApp()));
 }
 
