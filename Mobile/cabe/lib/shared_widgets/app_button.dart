@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:cabe/core/theme/app_colors.dart';
 import 'package:cabe/core/theme/app_text_styles.dart';
 
-enum AppButtonVariant { primary, secondary, text }
+enum AppButtonVariant { primary, secondary, outline, text, disabled }
 
 class AppButton extends StatelessWidget {
   final String label;
@@ -29,9 +29,32 @@ class AppButton extends StatelessWidget {
         return _buildPrimary();
       case AppButtonVariant.secondary:
         return _buildSecondary();
+      case AppButtonVariant.outline:
+        return _buildOutline();
       case AppButtonVariant.text:
         return _buildText();
+      case AppButtonVariant.disabled:
+        return _buildDisabled();
     }
+  }
+
+  Widget _buildDisabled() {
+    return SizedBox(
+      width: isFullWidth ? double.infinity : null,
+      child: ElevatedButton(
+        onPressed: onPressed, // Keep it clickable so we can show validation message!
+        style: ElevatedButton.styleFrom(
+          backgroundColor: AppColors.coolGray200,
+          foregroundColor: AppColors.coolGray400,
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          elevation: 0,
+        ),
+        child: _buildLabel(color: AppColors.coolGray400),
+      ),
+    );
   }
 
   Widget _buildPrimary() {
@@ -60,14 +83,32 @@ class AppButton extends StatelessWidget {
         onPressed: onPressed,
         style: ElevatedButton.styleFrom(
           backgroundColor: AppColors.coolGray200,
-          foregroundColor: AppColors.gray700,
+          foregroundColor: AppColors.blue900,
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
           ),
           elevation: 0,
         ),
-        child: _buildLabel(color: AppColors.gray700),
+        child: _buildLabel(color: AppColors.blue900),
+      ),
+    );
+  }
+
+  Widget _buildOutline() {
+    return SizedBox(
+      width: isFullWidth ? double.infinity : null,
+      child: OutlinedButton(
+        onPressed: onPressed,
+        style: OutlinedButton.styleFrom(
+          foregroundColor: AppColors.blue900,
+          side: const BorderSide(color: AppColors.blue900, width: 2),
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+        ),
+        child: _buildLabel(color: AppColors.blue900),
       ),
     );
   }
