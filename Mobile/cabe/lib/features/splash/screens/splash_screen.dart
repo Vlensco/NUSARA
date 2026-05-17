@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cabe/features/onboarding/screens/onboarding_screen.dart';
+import 'package:cabe/core/routing/main_navigation.dart';
 import 'package:cabe/core/theme/app_colors.dart';
 
 class SplashScreen extends StatefulWidget {
@@ -52,9 +54,19 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
     await Future.delayed(const Duration(milliseconds: 1500));
 
     if (mounted) {
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute(builder: (_) => const OnboardingScreen()),
-      );
+      // Check apakah user sudah login
+      final user = FirebaseAuth.instance.currentUser;
+      if (user != null) {
+        // Sudah login → langsung ke Home
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(builder: (_) => const MainNavigation()),
+        );
+      } else {
+        // Belum login → ke Onboarding/Login
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(builder: (_) => const OnboardingScreen()),
+        );
+      }
     }
   }
 

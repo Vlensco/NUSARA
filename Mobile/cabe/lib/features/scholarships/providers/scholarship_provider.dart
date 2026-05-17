@@ -1,30 +1,86 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:cabe/core/constants/scholarship_ids.dart';
 import '../models/scholarship.dart';
 
 class ScholarshipNotifier extends Notifier<List<Scholarship>> {
   @override
   List<Scholarship> build() {
+    // Load saved state dari Supabase saat provider dibangun
+    _loadSavedState();
     return _initialData;
   }
 
-  void toggleSave(String id) {
-    state = state.map((scholarship) {
-      if (scholarship.id == id) {
-        return scholarship.copyWith(isSaved: !scholarship.isSaved);
-      }
-      return scholarship;
+  Future<void> _loadSavedState() async {
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) return;
+
+      final snapshot = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .collection('saved_scholarships')
+          .get();
+
+      final savedIds = snapshot.docs.map((doc) => doc.id).toSet();
+
+      state = state.map((s) {
+        return s.copyWith(isSaved: savedIds.contains(s.id));
+      }).toList();
+    } catch (e) {
+      debugPrint('Error loading saved scholarships: $e');
+    }
+  }
+
+  Future<void> toggleSave(String id) async {
+    // Optimistic update dulu
+    final scholarship = state.firstWhere((s) => s.id == id);
+    final newSavedState = !scholarship.isSaved;
+
+    state = state.map((s) {
+      if (s.id == id) return s.copyWith(isSaved: newSavedState);
+      return s;
     }).toList();
+
+    // Sync ke Firestore
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) return;
+
+      final docRef = FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .collection('saved_scholarships')
+          .doc(id);
+
+      if (newSavedState) {
+        await docRef.set({
+          'scholarship_id': id,
+          'saved_at': FieldValue.serverTimestamp(),
+        });
+      } else {
+        await docRef.delete();
+      }
+    } catch (e) {
+      debugPrint('Error toggling save: $e');
+      // Rollback on error
+      state = state.map((s) {
+        if (s.id == id) return s.copyWith(isSaved: !newSavedState);
+        return s;
+      }).toList();
+    }
   }
 
   static final List<Scholarship> _initialData = [
     Scholarship(
-      id: '1',
+      id: ScholarshipIds.buk,
       title: 'Beasiswa Unggulan Kemendikbud',
       provider: 'Kemendikbud RI',
       providerColor: const Color(0xFF00A47D),
       tags: ['Matematika', 'Pemerintah', 'Prestasi', 'Parsial'],
-      matchPercentage: 23,
+      matchPercentage: 0,
       daysLeft: 21,
       isSaved: false,
       description: "Beasiswa Unggulan merupakan program beasiswa yang diselenggarakan oleh Kementerian Pendidikan dan Kebudayaan RI untuk siswa berprestasi. Program ini mencakup biaya pendidikan, biaya hidup, dan tunjangan buku selama masa studi.",
@@ -49,12 +105,12 @@ class ScholarshipNotifier extends Notifier<List<Scholarship>> {
       ],
     ),
     Scholarship(
-      id: '2',
+      id: ScholarshipIds.bapk,
       title: 'Beasiswa Atlet Berprestasi KONI',
       provider: 'KONI Pusat',
-      providerColor: const Color(0xFFFE4820), // Warna orange
+      providerColor: const Color(0xFFFE4820),
       tags: ['Olahraga', 'Pemerintah', 'Khusus', 'Penuh'],
-      matchPercentage: 86,
+      matchPercentage: 0,
       daysLeft: 22,
       isSaved: false,
       description: "Program beasiswa khusus untuk atlet pelajar berprestasi yang telah mewakili daerah atau nasional dalam kompetisi olahraga resmi. Mencakup biaya pendidikan dan pelatihan.",
@@ -78,12 +134,12 @@ class ScholarshipNotifier extends Notifier<List<Scholarship>> {
       ],
     ),
     Scholarship(
-      id: '3',
+      id: ScholarshipIds.bsnd,
       title: 'Beasiswa Seni Budaya Nusantara',
       provider: 'Kemendikbud RI',
-      providerColor: const Color(0xFF68417E), // Warna ungu
+      providerColor: const Color(0xFF68417E),
       tags: ['Seni & Desain', 'Pemerintah', 'Prestasi', 'Parsial'],
-      matchPercentage: 57,
+      matchPercentage: 0,
       daysLeft: 22,
       isSaved: false,
       description: "Beasiswa untuk siswa yang memiliki bakat dan prestasi di bidang seni dan budaya Indonesia. Mendukung pelestarian dan pengembangan seni budaya nusantara melalui pendidikan.",
@@ -107,12 +163,12 @@ class ScholarshipNotifier extends Notifier<List<Scholarship>> {
       ],
     ),
     Scholarship(
-      id: '4',
+      id: ScholarshipIds.ppt,
       title: 'Paragon for Future Leaders',
       provider: 'PT Paragon Technology',
-      providerColor: const Color(0xFFB7962A), // Warna agak coklat
+      providerColor: const Color(0xFFB7962A),
       tags: ['Wirausahawan', 'Swasta', 'Khusus', 'Parsial'],
-      matchPercentage: 97,
+      matchPercentage: 0,
       daysLeft: 25,
       isSaved: false,
       description: "Beasiswa dari Paragon Technology and Innovation untuk siswa SMA/SMK yang memiliki semangat inovasi dan entrepreneurship. Program ini juga mencakup pelatihan kewirausahaan dan mentoring.",
@@ -136,12 +192,12 @@ class ScholarshipNotifier extends Notifier<List<Scholarship>> {
       ],
     ),
     Scholarship(
-      id: '5',
+      id: ScholarshipIds.lpdp,
       title: 'LPDP Beasiswa Reguler',
       provider: 'LPDP Kemenkeu',
-      providerColor: const Color(0xFFE63333), // Warna merah agak gelap
+      providerColor: const Color(0xFFE63333),
       tags: ['Seni & Desain', 'Pemerintah', 'Prestasi', 'Parsial'],
-      matchPercentage: 31,
+      matchPercentage: 0,
       daysLeft: 27,
       isSaved: false,
       description: "Lembaga Pengelola Dana Pendidikan (LPDP) menawarkan beasiswa reguler bagi putra - putri terbaik bangsa untuk melanjutkan pendidikan ke jenjang yang lebih tinggi di universitas terkemuka.",
@@ -166,12 +222,12 @@ class ScholarshipNotifier extends Notifier<List<Scholarship>> {
       ],
     ),
     Scholarship(
-      id: '6',
+      id: ScholarshipIds.ai,
       title: 'Beasiswa Astra 1st',
       provider: 'Astra International',
-      providerColor: const Color(0xFFA729B3), 
+      providerColor: const Color(0xFFA729B3),
       tags: ['Matematika', 'Swasta', 'Kurang Mampu', 'Penuh'],
-      matchPercentage: 17,
+      matchPercentage: 0,
       daysLeft: 27,
       isSaved: false,
       description: "Program beasiswa dari PT Astra International Tbk untuk siswa SMK berprestasi yang tertarik di bidang otomotif, teknik, dan manufaktur. Termasuk kesempatan magang di perusahaan Astra.",
@@ -195,12 +251,12 @@ class ScholarshipNotifier extends Notifier<List<Scholarship>> {
       ],
     ),
     Scholarship(
-      id: '7',
+      id: ScholarshipIds.tf,
       title: 'TELADAN - Tanoto Foundation',
       provider: 'Tanoto Foundation',
-      providerColor: const Color(0xFF4AD743), // Warna hijau terang
+      providerColor: const Color(0xFF4AD743),
       tags: ['Kesehatan', 'Kampus', 'Ikatan Dinas', 'Penuh'],
-      matchPercentage: 77,
+      matchPercentage: 0,
       daysLeft: 29,
       isSaved: false,
       description: "Program TELADAN (Transformasi Edukasi untuk Melahirkan Pemimpin Masa Depan) dari Tanoto Foundation memberikan dukungan finansial dan pengembangan kepemimpinan bagi siswa berprestasi.",
