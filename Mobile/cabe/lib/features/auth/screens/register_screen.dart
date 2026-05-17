@@ -7,6 +7,7 @@ import 'package:cabe/features/auth/widgets/custom_text_field.dart';
 import 'package:cabe/features/auth/widgets/auth_widgets.dart';
 import 'package:cabe/shared_widgets/app_button.dart';
 import 'package:cabe/features/auth/controllers/register_controller.dart';
+import 'package:cabe/features/auth/controllers/login_controller.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -17,16 +18,19 @@ class RegisterScreen extends StatefulWidget {
 
 class _RegisterScreenState extends State<RegisterScreen> {
   late final RegisterController _controller;
+  late final LoginController _loginController;
 
   @override
   void initState() {
     super.initState();
     _controller = RegisterController();
+    _loginController = LoginController();
   }
 
   @override
   void dispose() {
     _controller.dispose();
+    _loginController.dispose();
     super.dispose();
   }
 
@@ -59,17 +63,20 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   padding: const EdgeInsets.symmetric(horizontal: 24),
                   child: Column(
                     children: [
-                      const CustomTextField(
+                      CustomTextField(
+                        controller: _controller.nameController,
                         hintText: 'Nama Lengkap',
                         keyboardType: TextInputType.name,
                       ),
                       const SizedBox(height: 16),
-                      const CustomTextField(
+                      CustomTextField(
+                        controller: _controller.emailController,
                         hintText: 'Email',
                         keyboardType: TextInputType.emailAddress,
                       ),
                       const SizedBox(height: 16),
                       CustomTextField(
+                        controller: _controller.passwordController,
                         hintText: 'Password',
                         obscureText: _controller.obscurePassword,
                         keyboardType: TextInputType.visiblePassword,
@@ -83,16 +90,18 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       ),
                       const SizedBox(height: 32),
 
-                      AppButton(
-                        label: 'Sign Up',
-                        variant: AppButtonVariant.primary,
-                        isFullWidth: true,
-                        onPressed: () => _controller.signUp(context),
-                      ),
+                      _controller.isLoading
+                          ? const Center(child: CircularProgressIndicator())
+                          : AppButton(
+                              label: 'Sign Up',
+                              variant: AppButtonVariant.primary,
+                              isFullWidth: true,
+                              onPressed: () => _controller.signUp(context),
+                            ),
                       const SizedBox(height: 32),
                       const OrDivider(text: 'or Sign Up with'),
                       const SizedBox(height: 24),
-                      const SocialLoginRow(),
+                      SocialLoginRow(controller: _loginController),
                       const SizedBox(height: 32),
 
                       AuthFooterLink(

@@ -5,12 +5,31 @@ import 'package:cabe/features/auth/screens/login_screen.dart';
 import 'package:cabe/features/auth/screens/register_screen.dart';
 import 'package:cabe/features/auth/widgets/auth_header.dart';
 import 'package:cabe/features/auth/widgets/auth_widgets.dart';
+import 'package:cabe/features/auth/controllers/login_controller.dart';
 import 'package:cabe/shared_widgets/app_button.dart';
 
-class AuthLandingScreen extends StatelessWidget {
+class AuthLandingScreen extends StatefulWidget {
   const AuthLandingScreen({super.key});
 
-  // ── Navigation Logic ──
+  @override
+  State<AuthLandingScreen> createState() => _AuthLandingScreenState();
+}
+
+class _AuthLandingScreenState extends State<AuthLandingScreen> {
+  late final LoginController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = LoginController();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
   void _goToLogin(BuildContext context) {
     Navigator.push(context, MaterialPageRoute(builder: (_) => const LoginScreen()));
   }
@@ -19,7 +38,6 @@ class AuthLandingScreen extends StatelessWidget {
     Navigator.push(context, MaterialPageRoute(builder: (_) => const RegisterScreen()));
   }
 
-  // ── Build ──
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -67,7 +85,10 @@ class AuthLandingScreen extends StatelessWidget {
                   const SizedBox(height: 28),
                   const OrDivider(),
                   const SizedBox(height: 20),
-                  const SocialLoginRow(),
+                  AnimatedBuilder(
+                    animation: _controller,
+                    builder: (context, _) => SocialLoginRow(controller: _controller),
+                  ),
                 ],
               ),
             ),
