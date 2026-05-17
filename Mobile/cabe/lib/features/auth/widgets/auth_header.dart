@@ -10,13 +10,11 @@ class AuthHeader extends StatelessWidget {
       child: Stack(
         alignment: Alignment.bottomCenter,
         children: [
-          // Background header image
           Image.asset(
             'assets/login/headerlogin.png',
             width: double.infinity,
             fit: BoxFit.fitWidth,
           ),
-          // Logo di atas header
           Positioned(
             bottom: 0,
             child: Image.asset(

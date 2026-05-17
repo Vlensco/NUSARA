@@ -1,0 +1,54 @@
+{
+  "project_info": {
+    "project_number": "396207908048",
+    "project_id": "caribeasiswa-cabe",
+    "storage_bucket": "caribeasiswa-cabe.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:396207908048:android:d9283297a44055a69b2ad5",
+        "android_client_info": {
+          "package_name": "com.example.cabe"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "396207908048-mbhnc8103hgh3pnllhbjt5nqnhad9mr0.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.cabe",
+            "certificate_hash": "9f66c132b5761485b8d5cd46dde6856ae58b743f"
+          }
+        },
+        {
+          "client_id": "396207908048-1f6a8lpnu29tmnnfk7qu57mr84ousbi6.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBvCOzukt-W1E5s_5mK6mMw4Mlx9fIhMF0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "396207908048-1f6a8lpnu29tmnnfk7qu57mr84ousbi6.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "396207908048-jhtnumn4c3cgbeqs01onhs09q41k1ck8.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.cabe"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
