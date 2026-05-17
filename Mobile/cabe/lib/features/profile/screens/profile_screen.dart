@@ -1,12 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cabe/core/routing/main_navigation.dart';
 import 'package:cabe/features/progress/controllers/progress_controller.dart';
+import 'package:cabe/core/providers/user_profile_provider.dart';
+import 'package:cabe/features/auth/screens/login_screen.dart';
 import '../controllers/profile_controller.dart';
 import '../widgets/action_card.dart';
 import '../widgets/profile_badge.dart';
 import '../widgets/progress_row.dart';
 import '../widgets/stat_card.dart';
+import '../widgets/edit_profile_dialog.dart';
 
 class ProfileScreen extends ConsumerWidget {
   const ProfileScreen({super.key});
@@ -48,38 +52,58 @@ class ProfileScreen extends ConsumerWidget {
                       backgroundColor: Color(0xFF1E3F66),
                     ),
                     const SizedBox(width: 15),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          profile.name,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                          ),
+                        Consumer(
+                          builder: (context, ref, child) {
+                            final profileAsync = ref.watch(userProfileProvider);
+                            return profileAsync.when(
+                              data: (dbProfile) {
+                                final name = dbProfile?['nama_lengkap'] ?? '';
+                                final school = dbProfile?['nama_sekolah'] ?? '';
+                                final grade = dbProfile?['kelas'] ?? '';
+                                final major = dbProfile?['jurusan'] ?? '';
+                                final displayName = name.isNotEmpty ? name : 'User';
+                                return Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      displayName,
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                    if (school.isNotEmpty) ...[
+                                      const SizedBox(height: 4),
+                                      Row(
+                                        children: [
+                                          const Icon(Icons.domain, color: Colors.white70, size: 14),
+                                          const SizedBox(width: 4),
+                                          Text(
+                                            school,
+                                            style: const TextStyle(color: Colors.white70, fontSize: 14),
+                                          ),
+                                        ],
+                                      ),
+                                    ],
+                                    if (grade.isNotEmpty || major.isNotEmpty) ...[
+                                      const SizedBox(height: 12),
+                                      Row(
+                                        children: [
+                                          if (grade.isNotEmpty) ProfileBadge(text: 'Kelas $grade'),
+                                          if (grade.isNotEmpty && major.isNotEmpty) const SizedBox(width: 8),
+                                          if (major.isNotEmpty) ProfileBadge(text: major),
+                                        ],
+                                      ),
+                                    ],
+                                  ],
+                                );
+                              },
+                              loading: () => const Text("Memuat...", style: TextStyle(color: Colors.white)),
+                              error: (_, __) => Text(profile.name, style: const TextStyle(color: Colors.white)),
+                            );
+                          },
                         ),
-                        const SizedBox(height: 4),
-                        Row(
-                          children: [
-                            const Icon(Icons.domain, color: Colors.white70, size: 14),
-                            const SizedBox(width: 4),
-                            Text(
-                              profile.school,
-                              style: const TextStyle(color: Colors.white70, fontSize: 14),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 12),
-                        Row(
-                          children: [
-                            ProfileBadge(text: profile.grade),
-                            const SizedBox(width: 8),
-                            ProfileBadge(text: profile.major),
-                          ],
-                        ),
-                      ],
-                    ),
                     const Spacer(),
                   ],
                 ),
@@ -293,26 +317,45 @@ class ProfileScreen extends ConsumerWidget {
                     ],
                   ),
                   const SizedBox(height: 15),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: profile.interests.map((interest) {
-                      return Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                        decoration: BoxDecoration(
-                          color: Colors.blue.shade50,
-                          borderRadius: BorderRadius.circular(15),
-                        ),
-                        child: Text(
-                          interest,
-                          style: TextStyle(
-                            color: Colors.blue.shade900,
-                            fontWeight: FontWeight.w600,
-                            fontSize: 12,
-                          ),
-                        ),
+                  Consumer(
+                    builder: (context, ref, child) {
+                      final dbProfile = ref.watch(userProfileProvider).value;
+                      List<String> interests = [];
+                      if (dbProfile?['minat_bakat'] != null) {
+                        final mb = dbProfile!['minat_bakat'];
+                        if (mb is List) {
+                          interests = List<String>.from(mb);
+                        } else if (mb is String && mb.isNotEmpty) {
+                          interests = mb.split(',').map((e) => e.trim()).toList();
+                        }
+                      }
+                      
+                      if (interests.isEmpty) {
+                        return const Text("Data belum dilengkapi", style: TextStyle(color: Colors.grey, fontStyle: FontStyle.italic));
+                      }
+                      
+                      return Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: interests.map((interest) {
+                          return Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                            decoration: BoxDecoration(
+                              color: Colors.blue.shade50,
+                              borderRadius: BorderRadius.circular(15),
+                            ),
+                            child: Text(
+                              interest,
+                              style: TextStyle(
+                                color: Colors.blue.shade900,
+                                fontWeight: FontWeight.w600,
+                                fontSize: 12,
+                              ),
+                            ),
+                          );
+                        }).toList(),
                       );
-                    }).toList(),
+                    },
                   ),
                 ],
               ),
@@ -340,61 +383,104 @@ class ProfileScreen extends ConsumerWidget {
                     ],
                   ),
                   const SizedBox(height: 15),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: profile.achievements.map((achievement) {
-                      return Container(
-                        margin: const EdgeInsets.only(bottom: 8),
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                        decoration: BoxDecoration(
-                          border: Border.all(color: Colors.grey.shade400),
-                          borderRadius: BorderRadius.circular(15),
-                        ),
-                        child: Text(
-                          achievement,
-                          style: const TextStyle(
-                            color: Colors.black54,
-                            fontSize: 12,
-                          ),
-                        ),
+                  Consumer(
+                    builder: (context, ref, child) {
+                      final dbProfile = ref.watch(userProfileProvider).value;
+                      List<String> achievements = [];
+                      if (dbProfile?['prestasi'] != null) {
+                        final pr = dbProfile!['prestasi'];
+                        if (pr is List) {
+                          achievements = pr
+                              .map((e) => e.toString().trim())
+                              .where((e) => e.isNotEmpty && e != '[]' && e != '{}')
+                              .toList();
+                        } else if (pr is String && pr.isNotEmpty && pr != '[]' && pr != '{}') {
+                          achievements = pr
+                              .split(',')
+                              .map((e) => e.trim())
+                              .where((e) => e.isNotEmpty)
+                              .toList();
+                        }
+                      }
+                      
+                      if (achievements.isEmpty) {
+                        return const Text("Data belum dilengkapi", style: TextStyle(color: Colors.grey, fontStyle: FontStyle.italic));
+                      }
+                      
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: achievements.map((achievement) {
+                          return Container(
+                            margin: const EdgeInsets.only(bottom: 8),
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                            decoration: BoxDecoration(
+                              border: Border.all(color: Colors.grey.shade400),
+                              borderRadius: BorderRadius.circular(15),
+                            ),
+                            child: Text(
+                              achievement,
+                              style: const TextStyle(
+                                color: Colors.black54,
+                                fontSize: 12,
+                              ),
+                            ),
+                          );
+                        }).toList(),
                       );
-                    }).toList(),
+                    },
                   ),
                   const SizedBox(height: 15),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 10),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFEEF2F6),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        const Text("Nilai Rapor", style: TextStyle(color: Colors.black54)),
-                        Text(
-                          profile.reportScore.toString(),
-                          style: const TextStyle(fontWeight: FontWeight.bold),
+                  Consumer(
+                    builder: (context, ref, child) {
+                      final dbProfile = ref.watch(userProfileProvider).value;
+                      final rawScore = dbProfile?['nilai_rata_rata'];
+                      final reportScore = (rawScore != null && rawScore != 0 && rawScore != 0.0)
+                          ? rawScore.toString()
+                          : 'Belum diisi';
+                      
+                      return Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 10),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFEEF2F6),
+                          borderRadius: BorderRadius.circular(8),
                         ),
-                      ],
-                    ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            const Text("Nilai Rapor", style: TextStyle(color: Colors.black54)),
+                            Text(
+                              reportScore,
+                              style: const TextStyle(fontWeight: FontWeight.bold),
+                            ),
+                          ],
+                        ),
+                      );
+                    },
                   ),
                   const SizedBox(height: 8),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 10),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFEEF2F6),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        const Text("Skor TOEIC", style: TextStyle(color: Colors.black54)),
-                        Text(
-                          profile.toeicScore.toString(),
-                          style: const TextStyle(fontWeight: FontWeight.bold),
+                  Consumer(
+                    builder: (context, ref, child) {
+                      final dbProfile = ref.watch(userProfileProvider).value;
+                      final toeicScore = dbProfile?['skor_toeic']?.toString() ?? 'Belum diisi';
+                      
+                      return Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 10),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFEEF2F6),
+                          borderRadius: BorderRadius.circular(8),
                         ),
-                      ],
-                    ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            const Text("Skor TOEIC", style: TextStyle(color: Colors.black54)),
+                            Text(
+                              toeicScore,
+                              style: const TextStyle(fontWeight: FontWeight.bold),
+                            ),
+                          ],
+                        ),
+                      );
+                    },
                   ),
                 ],
               ),
@@ -410,11 +496,55 @@ class ProfileScreen extends ConsumerWidget {
               padding: const EdgeInsets.symmetric(horizontal: 20),
               child: Column(
                 children: [
-                  ActionCard(icon: Icons.person_outline, label: "Edit Profil", isDestructive: false),
+                  ActionCard(
+                    icon: Icons.person_outline, 
+                    label: "Edit Profil", 
+                    isDestructive: false,
+                    onTap: () {
+                      showDialog(
+                        context: context,
+                        barrierDismissible: true,
+                        builder: (context) => const EditProfileDialog(),
+                      );
+                    },
+                  ),
                   const SizedBox(height: 10),
                   ActionCard(icon: Icons.language, label: "Bahasa", isDestructive: false),
                   const SizedBox(height: 10),
-                  ActionCard(icon: Icons.logout, label: "Log Out", isDestructive: true),
+                  ActionCard(
+                    icon: Icons.logout, 
+                    label: "Log Out", 
+                    isDestructive: true,
+                    onTap: () async {
+                      final confirm = await showDialog<bool>(
+                        context: context,
+                        builder: (ctx) => AlertDialog(
+                          title: const Text('Log Out'),
+                          content: const Text('Apakah kamu yakin ingin keluar?'),
+                          actions: [
+                            TextButton(
+                              onPressed: () => Navigator.of(ctx).pop(false),
+                              child: const Text('Batal'),
+                            ),
+                            TextButton(
+                              onPressed: () => Navigator.of(ctx).pop(true),
+                              child: const Text('Log Out', style: TextStyle(color: Colors.red)),
+                            ),
+                          ],
+                        ),
+                      );
+                      if (confirm == true) {
+                        await FirebaseAuth.instance.signOut();
+                        ref.invalidate(userProfileProvider);
+                        if (context.mounted) {
+                          Navigator.of(context).pushAndRemoveUntil(
+                            MaterialPageRoute(builder: (_) => const LoginScreen()),
+                            (route) => false,
+                          );
+                        }
+                      }
+                    },
+                  ),
                 ],
               ),
             ),
