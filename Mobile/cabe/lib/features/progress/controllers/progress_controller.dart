@@ -1,15 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cabe/core/theme/app_colors.dart';
+import 'package:cabe/core/constants/scholarship_ids.dart';
 import 'package:cabe/features/checklist/controllers/checklist_controller.dart';
 import 'package:cabe/features/scholarships/providers/scholarship_provider.dart';
 
-// ENUM STATUS 
+// ENUMS & MODELS
 enum ProgressStatus { tersimpan, ditinjau, diterima, ditolak }
 
-// MODEL
 class ProgressItem {
-  final String id;
+  final String id; // acronym (BUK, BAPK, etc.)
   final String title;
   final ProgressStatus status;
   final int? docsUploaded;
@@ -36,15 +38,10 @@ class ProgressItem {
     );
   }
 
-  // ─── COMPUTED DISPLAY PROPERTIES ───────────────────────────────────────────
-
-  /// Teks subtitle sesuai status
   String get subtitle {
     switch (status) {
       case ProgressStatus.tersimpan:
-        if (!isApplied) {
-          return 'Segera daftar beasiswa di halaman beasiswa';
-        }
+        if (!isApplied) return 'Segera daftar beasiswa di halaman beasiswa';
         return 'Dokumen masih kurang ${docsUploaded ?? 0}/${docsTotal ?? 0}! Segera lengkapi';
       case ProgressStatus.ditinjau:
         return 'Dokumen dalam tahap peninjauan!';
@@ -55,52 +52,35 @@ class ProgressItem {
     }
   }
 
-  /// Warna teks subtitle
   Color get subtitleColor {
     switch (status) {
-      case ProgressStatus.tersimpan:
-        return AppColors.dangerText;
-      case ProgressStatus.ditinjau:
-        return AppColors.warningText;
-      case ProgressStatus.diterima:
-        return AppColors.successText;
-      case ProgressStatus.ditolak:
-        return AppColors.dangerText;
+      case ProgressStatus.tersimpan: return AppColors.dangerText;
+      case ProgressStatus.ditinjau: return AppColors.warningText;
+      case ProgressStatus.diterima: return AppColors.successText;
+      case ProgressStatus.ditolak: return AppColors.dangerText;
     }
   }
 
-  /// Apakah menampilkan chevron (>) 
-  bool get showChevron =>
-      status == ProgressStatus.diterima || status == ProgressStatus.ditinjau;
-
-  /// Apakah menampilkan ikon alert (!)
+  bool get showChevron => status == ProgressStatus.diterima || status == ProgressStatus.ditinjau;
   bool get showAlert => status == ProgressStatus.tersimpan;
-
-  /// Apakah menampilkan ikon X
   bool get showReject => status == ProgressStatus.ditolak;
 }
 
-// FILTER ENUM 
 enum ProgressFilter { semua, tersimpan, ditinjau, diterima, ditolak }
 
 extension ProgressFilterLabel on ProgressFilter {
   String get label {
     switch (this) {
-      case ProgressFilter.semua:
-        return 'Semua';
-      case ProgressFilter.tersimpan:
-        return 'Tersimpan';
-      case ProgressFilter.ditinjau:
-        return 'Ditinjau';
-      case ProgressFilter.diterima:
-        return 'Diterima';
-      case ProgressFilter.ditolak:
-        return 'Ditolak';
+      case ProgressFilter.semua: return 'Semua';
+      case ProgressFilter.tersimpan: return 'Tersimpan';
+      case ProgressFilter.ditinjau: return 'Ditinjau';
+      case ProgressFilter.diterima: return 'Diterima';
+      case ProgressFilter.ditolak: return 'Ditolak';
     }
   }
 }
 
-// STATE 
+// STATE
 class ProgressState {
   final List<ProgressItem> items;
   final ProgressFilter activeFilter;
@@ -126,7 +106,7 @@ class ProgressState {
   }
 }
 
-// MAPPING ACRONYM KE DATA BEASISWA 
+// MAPPING
 const _acronymToTitle = {
   'BUK': 'Beasiswa Unggulan Kemendikbud',
   'BAPK': 'Beasiswa Atlet Berprestasi KONI',
@@ -137,10 +117,28 @@ const _acronymToTitle = {
   'TF': 'TELADAN - Tanoto Foundation',
 };
 
-// NOTIFIER 
+ProgressStatus _parseStatus(String? dbStatus) {
+  switch (dbStatus) {
+    case 'Ditinjau': return ProgressStatus.ditinjau;
+    case 'Diterima': return ProgressStatus.diterima;
+    case 'Ditolak': return ProgressStatus.ditolak;
+    default: return ProgressStatus.tersimpan;
+  }
+}
+
+String _statusToDb(ProgressStatus status) {
+  switch (status) {
+    case ProgressStatus.tersimpan: return 'Persiapan';
+    case ProgressStatus.ditinjau: return 'Ditinjau';
+    case ProgressStatus.diterima: return 'Diterima';
+    case ProgressStatus.ditolak: return 'Ditolak';
+  }
+}
+
+// NOTIFIER (Supabase integrated)
 class ProgressNotifier extends Notifier<ProgressState> {
-  // Menyimpan status yang sudah diubah manual oleh user
-  final Map<String, ProgressStatus> _manualStatuses = {};
+  // Menyimpan status manual + status dari DB
+  final Map<String, ProgressStatus> _dbStatuses = {};
 
   @override
   ProgressState build() {
@@ -148,48 +146,46 @@ class ProgressNotifier extends Notifier<ProgressState> {
     final checklistSections = ref.watch(checklistProvider);
     final allScholarships = ref.watch(scholarshipProvider);
 
+    // Load status dari DB saat pertama kali
+    _loadProgressFromDb();
+
     final Set<String> allAcronyms = {...applied};
 
     // Tambahkan beasiswa yang isSaved == true
     for (final s in allScholarships) {
       if (s.isSaved) {
-        final acronym = _acronymToTitle.entries
-            .firstWhere((e) => e.value == s.title, orElse: () => MapEntry(s.title, s.title))
-            .key;
-        allAcronyms.add(acronym);
+        final acronym = ScholarshipIds.getAcronym(s.id);
+        if (acronym != null) allAcronyms.add(acronym);
       }
     }
 
     final items = allAcronyms.map((acronym) {
       final title = _acronymToTitle[acronym] ?? acronym;
 
-      // Hitung total & checked dokumen per acronym
       int totalDocs = 0;
       int checkedDocs = 0;
       for (final section in checklistSections) {
         for (final item in section.items) {
           if (item.tags.any((tag) => tag.label == acronym)) {
             totalDocs++;
-            if (item.isChecked) {
-              checkedDocs++;
-            }
+            if (item.isChecked) checkedDocs++;
           }
         }
       }
 
-      // Cek apakah user sudah mengubah statusnya secara manual
-      if (_manualStatuses.containsKey(acronym)) {
+      // Gunakan status dari DB jika ada
+      if (_dbStatuses.containsKey(acronym)) {
         return ProgressItem(
           id: acronym,
           title: title,
-          status: _manualStatuses[acronym]!,
+          status: _dbStatuses[acronym]!,
           docsUploaded: checkedDocs,
           docsTotal: totalDocs,
           isApplied: applied.contains(acronym),
         );
       }
 
-      // Tentukan status otomatis berdasarkan kelengkapan dokumen
+      // Auto-determine status
       ProgressStatus status;
       if (totalDocs > 0 && checkedDocs == totalDocs) {
         status = ProgressStatus.ditinjau;
@@ -217,13 +213,64 @@ class ProgressNotifier extends Notifier<ProgressState> {
     return ProgressState(items: items, activeFilter: currentFilter);
   }
 
+  Future<void> _loadProgressFromDb() async {
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) return;
+
+      final snapshot = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .collection('scholarship_progress')
+          .get();
+
+      for (final doc in snapshot.docs) {
+        final data = doc.data();
+        final acronym = ScholarshipIds.getAcronym(doc.id);
+        if (acronym != null) {
+          final status = _parseStatus(data['status'] as String?);
+          // Hanya override jika statusnya bukan default (Persiapan)
+          if (data['status'] != 'Persiapan') {
+            _dbStatuses[acronym] = status;
+          }
+        }
+      }
+
+      // Rebuild state setelah data dimuat
+      ref.invalidateSelf();
+    } catch (e) {
+      debugPrint('Error loading progress from DB: $e');
+    }
+  }
+
   void setFilter(ProgressFilter filter) {
     state = state.copyWith(activeFilter: filter);
   }
 
-  void updateStatus(String itemId, ProgressStatus newStatus) {
-    _manualStatuses[itemId] = newStatus;
+  Future<void> updateStatus(String itemId, ProgressStatus newStatus) async {
+    _dbStatuses[itemId] = newStatus;
     ref.invalidateSelf();
+
+    // Sync ke Firestore
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) return;
+
+      final scholarshipId = ScholarshipIds.getId(itemId);
+      if (scholarshipId == null) return;
+
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .collection('scholarship_progress')
+          .doc(scholarshipId)
+          .update({
+            'status': _statusToDb(newStatus),
+            'updated_at': FieldValue.serverTimestamp(),
+          });
+    } catch (e) {
+      debugPrint('Error updating progress status: $e');
+    }
   }
 }
 
