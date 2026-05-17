@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cabe/features/profile_setup/models/profile_setup_data.dart';
 import 'package:cabe/features/profile_setup/screens/welcome_screen.dart';
 
@@ -7,13 +9,13 @@ class ProfileSetupController extends ChangeNotifier {
   final int totalSteps = 4;
   final ProfileSetupData profileData = ProfileSetupData();
 
-  // ── Controllers Step 1 ──
+  // Controllers Step 1
   final namaController = TextEditingController();
   final tanggalLahirController = TextEditingController();
   final jenisKelaminController = TextEditingController();
   final sekolahController = TextEditingController();
 
-  // ── Controllers Step 2 ──
+  // Controllers Step 2
   final kelasController = TextEditingController();
   final jurusanController = TextEditingController();
   final nilaiController = TextEditingController();
@@ -44,7 +46,7 @@ class ProfileSetupController extends ChangeNotifier {
     super.dispose();
   }
 
-  // ── Navigation Logic ──
+  // Navigation Logic
   void nextStep(BuildContext context) {
     if (!_validateCurrentStep(context)) return;
 
@@ -145,16 +147,54 @@ class ProfileSetupController extends ChangeNotifier {
     }
   }
 
-  void finishSetup(BuildContext context) {
-    final name = profileData.namaLengkap.isNotEmpty
-        ? profileData.namaLengkap
-        : 'Patrick Star';
-    Navigator.of(context).pushReplacement(
-      MaterialPageRoute(builder: (_) => WelcomeScreen(userName: name)),
-    );
+  Future<void> finishSetup(BuildContext context) async {
+    _saveCurrentStep(); // Memastikan step terakhir ikut tersimpan ke profileData
+
+    final user = FirebaseAuth.instance.currentUser;
+
+    if (user == null) {
+      _showError(context, "Terjadi kesalahan: Anda belum login!");
+      return;
+    }
+
+    try {
+      // Konversi nilai menjadi desimal (jika ada)
+      double? nilai;
+      if (profileData.nilaiRataRata.isNotEmpty) {
+        nilai = double.tryParse(profileData.nilaiRataRata.replaceAll(',', '.'));
+      }
+
+      // Simpan data ke Firestore users/{uid}
+      await FirebaseFirestore.instance.collection('users').doc(user.uid).set({
+        'nama_lengkap': profileData.namaLengkap,
+        'tanggal_lahir': profileData.tanggalLahir.isEmpty ? null : profileData.tanggalLahir,
+        'jenis_kelamin': profileData.jenisKelamin,
+        'nama_sekolah': profileData.namaSekolah,
+        'kelas': profileData.kelas,
+        'jurusan': profileData.jurusan,
+        'nilai_rata_rata': nilai,
+        'prestasi': profileData.prestasi,
+        'minat_bakat': profileData.minatBakat,
+        'sumber_pendanaan': profileData.sumberPendanaan,
+        'jenis_beasiswa': profileData.jenisBeasiswa,
+        'cakupan_biaya': profileData.cakupanBiaya,
+        'updated_at': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
+
+      if (!context.mounted) return;
+      final name = profileData.namaLengkap.isNotEmpty
+          ? profileData.namaLengkap
+          : 'User';
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(builder: (_) => WelcomeScreen(userName: name)),
+      );
+    } catch (e) {
+      if (!context.mounted) return;
+      _showError(context, "Gagal menyimpan data ke database: $e");
+    }
   }
 
-  // ── Chips Toggle Logic ──
+  // Chips Toggle Logic
   void toggleMinatBakat(String item) {
     if (profileData.minatBakat.contains(item)) {
       profileData.minatBakat.remove(item);

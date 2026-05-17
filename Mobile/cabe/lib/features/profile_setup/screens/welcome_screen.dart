@@ -6,7 +6,7 @@ import 'package:cabe/features/profile_setup/controllers/welcome_controller.dart'
 class WelcomeScreen extends StatefulWidget {
   final String userName;
 
-  const WelcomeScreen({super.key, this.userName = 'Patrick Star'});
+  const WelcomeScreen({super.key, this.userName = 'User'});
 
   @override
   State<WelcomeScreen> createState() => _WelcomeScreenState();
