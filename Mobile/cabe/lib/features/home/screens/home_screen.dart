@@ -6,6 +6,7 @@ import 'package:cabe/shared_widgets/app_chip.dart';
 import 'package:cabe/shared_widgets/scholarship_card.dart';
 import 'package:cabe/features/scholarships/providers/scholarship_provider.dart';
 import 'package:cabe/features/scholarships/screens/detail_beasiswa_page.dart';
+import 'package:cabe/core/providers/user_profile_provider.dart';
 
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
@@ -14,6 +15,15 @@ class HomeScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final int selectedCategoryIndex = ref.watch(homeCategoryFilterProvider);
     final allScholarships = ref.watch(scholarshipProvider);
+    final userProfileAsync = ref.watch(userProfileProvider);
+
+    final userName = userProfileAsync.maybeWhen(
+      data: (data) {
+        final name = data?['nama_lengkap'] as String?;
+        return (name != null && name.isNotEmpty) ? name : 'Pelajar';
+      },
+      orElse: () => '...',
+    );
 
     final List<String> categories = [
       'Semua',
@@ -67,17 +77,17 @@ class HomeScreen extends ConsumerWidget {
                             ),
                           ),
                           Text(
-                            'Patrick Star !',
+                            '$userName !',
                             style: AppTextStyles.h3.copyWith(
                               color: AppColors.white,
                             ),
                           ),
                         ],
                       ),
-                      const CircleAvatar(
+                      CircleAvatar(
                         radius: 25,
                         backgroundImage: NetworkImage(
-                          'https://i.pravatar.cc/150?u=patrick',
+                          'https://ui-avatars.com/api/?name=$userName&background=E5E7EB&color=1F2937',
                         ),
                       ),
                     ],

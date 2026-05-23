@@ -45,67 +45,82 @@ class ProfileScreen extends ConsumerWidget {
                   bottom: 70,
                 ),
                 decoration: const BoxDecoration(color: Color(0xFF002147)),
-                child: Row(
-                  children: [
-                    const CircleAvatar(
-                      radius: 35,
-                      backgroundColor: Color(0xFF1E3F66),
-                    ),
-                    const SizedBox(width: 15),
-                        Consumer(
-                          builder: (context, ref, child) {
-                            final profileAsync = ref.watch(userProfileProvider);
-                            return profileAsync.when(
-                              data: (dbProfile) {
-                                final name = dbProfile?['nama_lengkap'] ?? '';
-                                final school = dbProfile?['nama_sekolah'] ?? '';
-                                final grade = dbProfile?['kelas'] ?? '';
-                                final major = dbProfile?['jurusan'] ?? '';
-                                final displayName = name.isNotEmpty ? name : 'User';
-                                return Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      displayName,
-                                      style: const TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 18,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                    if (school.isNotEmpty) ...[
-                                      const SizedBox(height: 4),
-                                      Row(
-                                        children: [
-                                          const Icon(Icons.domain, color: Colors.white70, size: 14),
-                                          const SizedBox(width: 4),
-                                          Text(
-                                            school,
-                                            style: const TextStyle(color: Colors.white70, fontSize: 14),
-                                          ),
-                                        ],
-                                      ),
-                                    ],
-                                    if (grade.isNotEmpty || major.isNotEmpty) ...[
-                                      const SizedBox(height: 12),
-                                      Row(
-                                        children: [
-                                          if (grade.isNotEmpty) ProfileBadge(text: 'Kelas $grade'),
-                                          if (grade.isNotEmpty && major.isNotEmpty) const SizedBox(width: 8),
-                                          if (major.isNotEmpty) ProfileBadge(text: major),
-                                        ],
+                child: Consumer(
+                  builder: (context, ref, child) {
+                    final profileAsync = ref.watch(userProfileProvider);
+                    return profileAsync.when(
+                      data: (dbProfile) {
+                        final name = dbProfile?['nama_lengkap'] ?? '';
+                        final school = dbProfile?['nama_sekolah'] ?? '';
+                        final grade = dbProfile?['kelas'] ?? '';
+                        final major = dbProfile?['jurusan'] ?? '';
+                        final displayName = name.isNotEmpty ? name : 'User';
+                        return Row(
+                          children: [
+                            CircleAvatar(
+                              radius: 35,
+                              backgroundColor: const Color(0xFF1E3F66),
+                              backgroundImage: NetworkImage(
+                                'https://ui-avatars.com/api/?name=$displayName&background=E5E7EB&color=1F2937',
+                              ),
+                            ),
+                            const SizedBox(width: 15),
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  displayName,
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                if (school.isNotEmpty) ...[
+                                  const SizedBox(height: 4),
+                                  Row(
+                                    children: [
+                                      const Icon(Icons.domain, color: Colors.white70, size: 14),
+                                      const SizedBox(width: 4),
+                                      Text(
+                                        school,
+                                        style: const TextStyle(color: Colors.white70, fontSize: 14),
                                       ),
                                     ],
-                                  ],
-                                );
-                              },
-                              loading: () => const Text("Memuat...", style: TextStyle(color: Colors.white)),
-                              error: (_, __) => Text(profile.name, style: const TextStyle(color: Colors.white)),
-                            );
-                          },
-                        ),
-                    const Spacer(),
-                  ],
+                                  ),
+                                ],
+                                if (grade.isNotEmpty || major.isNotEmpty) ...[
+                                  const SizedBox(height: 12),
+                                  Row(
+                                    children: [
+                                      if (grade.isNotEmpty) ProfileBadge(text: 'Kelas $grade'),
+                                      if (grade.isNotEmpty && major.isNotEmpty) const SizedBox(width: 8),
+                                      if (major.isNotEmpty) ProfileBadge(text: major),
+                                    ],
+                                  ),
+                                ],
+                              ],
+                            ),
+                            const Spacer(),
+                          ],
+                        );
+                      },
+                      loading: () => const Row(
+                        children: [
+                          CircleAvatar(radius: 35, backgroundColor: Color(0xFF1E3F66)),
+                          SizedBox(width: 15),
+                          Text("Memuat...", style: TextStyle(color: Colors.white)),
+                        ],
+                      ),
+                      error: (_, __) => Row(
+                        children: [
+                          const CircleAvatar(radius: 35, backgroundColor: Color(0xFF1E3F66)),
+                          const SizedBox(width: 15),
+                          Text(profile.name, style: const TextStyle(color: Colors.white)),
+                        ],
+                      ),
+                    );
+                  },
                 ),
               ),
 
@@ -179,28 +194,34 @@ class ProfileScreen extends ConsumerWidget {
                     ),
                     const SizedBox(height: 20),
                     ProgressRow(
-                      icon: Icons.person_outline,
-                      title: "Kelengkapan Profil",
-                      score: "${profile.profileCompletionScore} / ${profile.profileCompletionMax}",
-                      progress: profile.profileCompletionProgress,
+                      icon: Icons.school_outlined,
+                      title: "Nilai akademik (IPK/Nilai)",
+                      score: "${profile.academicScore} / ${profile.academicMax}",
+                      progress: profile.academicProgress,
+                    ),
+                    ProgressRow(
+                      icon: Icons.monetization_on_outlined,
+                      title: "Kebutuhan Finansial",
+                      score: "${profile.financialScore} / ${profile.financialMax}",
+                      progress: profile.financialProgress,
+                    ),
+                    ProgressRow(
+                      icon: Icons.emoji_events_outlined,
+                      title: "Prestasi Non-Akademik",
+                      score: "${profile.nonAcademicScore} / ${profile.nonAcademicMax}",
+                      progress: profile.nonAcademicProgress,
+                    ),
+                    ProgressRow(
+                      icon: Icons.card_membership_outlined,
+                      title: "Sertifikat & Rekomendasi",
+                      score: "${profile.certRecScore} / ${profile.certRecMax}",
+                      progress: profile.certRecProgress,
                     ),
                     ProgressRow(
                       icon: Icons.description_outlined,
-                      title: "Kesiapan Dokumen",
-                      score: "${profile.documentReadinessScore} / ${profile.documentReadinessMax}",
-                      progress: profile.documentReadinessProgress,
-                    ),
-                    ProgressRow(
-                      icon: Icons.school_outlined,
-                      title: "Kekuatan Akademik",
-                      score: "${profile.academicStrengthScore} / ${profile.academicStrengthMax}",
-                      progress: profile.academicStrengthProgress,
-                    ),
-                    ProgressRow(
-                      icon: Icons.star_outline,
-                      title: "Aktivitas & Prestasi",
-                      score: "${profile.activityAchievementScore} / ${profile.activityAchievementMax}",
-                      progress: profile.activityAchievementProgress,
+                      title: "Motivasi & Rencana Karir",
+                      score: "${profile.motivationScore} / ${profile.motivationMax}",
+                      progress: profile.motivationProgress,
                     ),
                   ],
                 ),

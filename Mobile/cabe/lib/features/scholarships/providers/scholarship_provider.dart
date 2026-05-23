@@ -3,16 +3,43 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cabe/core/constants/scholarship_ids.dart';
+import 'package:cabe/core/services/ai_service.dart';
+import 'package:cabe/core/providers/user_profile_provider.dart';
 import '../models/scholarship.dart';
 
 class ScholarshipNotifier extends Notifier<List<Scholarship>> {
+  int _activeLoadId = 0;
+
   @override
   List<Scholarship> build() {
-    // Load saved state dari Supabase saat provider dibangun
-    _loadSavedState();
+    _initData();
+
+    // 🔄 Auto-recalculate setiap kali profil user berubah (edit profil)
+    ref.listen(userProfileProvider, (previous, next) {
+      final prevData = previous?.value;
+      final nextData = next.value;
+      if (nextData == null) return;
+      // Hanya recalculate jika data profil yang relevan berubah
+      final fieldsChanged =
+          prevData?['nilai_rata_rata'] != nextData['nilai_rata_rata'] ||
+          prevData?['kelas'] != nextData['kelas'] ||
+          prevData?['jurusan'] != nextData['jurusan'] ||
+          prevData?['prestasi'] != nextData['prestasi'];
+      if (fieldsChanged) {
+        debugPrint('🔄 Profil berubah, recalculate AI match...');
+        _loadAiMatchPercentages();
+      }
+    });
+
     return _initialData;
   }
 
+  Future<void> _initData() async {
+    await _loadSavedState();
+    await _loadAiMatchPercentages();
+  }
+
+  /// Load saved state dari Firestore
   Future<void> _loadSavedState() async {
     try {
       final user = FirebaseAuth.instance.currentUser;
@@ -33,6 +60,90 @@ class ScholarshipNotifier extends Notifier<List<Scholarship>> {
       debugPrint('Error loading saved scholarships: $e');
     }
   }
+
+  /// Ambil profil user dari Firebase lalu hitung match % via AI
+  Future<void> _loadAiMatchPercentages() async {
+    final loadId = ++_activeLoadId;
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) return;
+
+      final doc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .get();
+
+      if (!doc.exists) return;
+      if (loadId != _activeLoadId) return;
+      final data = doc.data()!;
+
+      // Ambil data profil
+      final rawNilai = data['nilai_rata_rata'];
+      final nilaiRataRata = (rawNilai is num) ? rawNilai.toDouble() : 0.0;
+      final kelas = (data['kelas'] as String?) ?? '';
+      final jurusan = (data['jurusan'] as String?) ?? '';
+
+      // Ambil list prestasi
+      final rawPrestasi = data['prestasi'];
+      List<String> prestasi = [];
+      if (rawPrestasi is List) {
+        prestasi = rawPrestasi.map((e) => e.toString()).where((e) => e.isNotEmpty).toList();
+      } else if (rawPrestasi is String && rawPrestasi.isNotEmpty) {
+        prestasi = rawPrestasi.split(',').map((e) => e.trim()).where((e) => e.isNotEmpty).toList();
+      }
+
+      // Ambil list minat
+      final rawMinat = data['minat_bakat'];
+      List<String> minat = [];
+      if (rawMinat is List) {
+        minat = rawMinat.map((e) => e.toString()).toList();
+      } else if (rawMinat is String && rawMinat.isNotEmpty) {
+        minat = rawMinat.split(',').map((e) => e.trim()).toList();
+      }
+
+      // 1. Tampilkan persentase rule-based/fallback secara INSTAN terlebih dahulu
+      state = state.map((scholarship) {
+        final fallbackPct = AiService.fallbackMatch(
+          nilaiRataRata: nilaiRataRata,
+          kelas: kelas,
+          jurusan: jurusan,
+          minatBakat: minat,
+          prestasi: prestasi,
+          scholarshipCriteria: scholarship.criteria,
+        );
+        return scholarship.copyWith(matchPercentage: fallbackPct);
+      }).toList();
+
+      // 2. Jalankan request AI secara paralel dan update satu-per-satu setelah respon AI diterima
+      final futures = state.map((scholarship) async {
+        final matchPct = await AiService.getMatchPercentage(
+          nilaiRataRata: nilaiRataRata,
+          kelas: kelas,
+          jurusan: jurusan,
+          minatBakat: minat,
+          prestasi: prestasi,
+          scholarshipTitle: scholarship.title,
+          scholarshipCriteria: scholarship.criteria,
+        );
+
+        // Hanya update jika ini masih request aktif terbaru
+        if (loadId == _activeLoadId) {
+          state = state.map((s) {
+            if (s.id == scholarship.id) {
+              return s.copyWith(matchPercentage: matchPct);
+            }
+            return s;
+          }).toList();
+        }
+      }).toList();
+
+      await Future.wait(futures);
+      debugPrint('✅ AI Match percentages loaded concurrently for ${state.length} scholarships');
+    } catch (e) {
+      debugPrint('Error loading AI match percentages: $e');
+    }
+  }
+
 
   Future<void> toggleSave(String id) async {
     // Optimistic update dulu

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:cabe/core/theme/app_colors.dart';
 import 'package:cabe/core/theme/app_text_styles.dart';
 import 'package:cabe/features/auth/widgets/custom_text_field.dart';
@@ -10,16 +11,18 @@ class InfoAkademikStep extends StatelessWidget {
   final TextEditingController kelasController;
   final TextEditingController jurusanController;
   final TextEditingController nilaiController;
-  final TextEditingController prestasiController;
   final VoidCallback? onUploadFile;
+  final List<PlatformFile> newFiles;
+  final void Function(PlatformFile)? onRemoveFile;
 
   const InfoAkademikStep({
     super.key,
     required this.kelasController,
     required this.jurusanController,
     required this.nilaiController,
-    required this.prestasiController,
     this.onUploadFile,
+    this.newFiles = const [],
+    this.onRemoveFile,
   });
 
   @override
@@ -61,7 +64,7 @@ class InfoAkademikStep extends StatelessWidget {
           CustomTextField(
             hintText: 'Contoh : 85',
             controller: nilaiController,
-            keyboardType: TextInputType.numberWithOptions(decimal: true),
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
             inputFormatters: [
               FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d{0,2}')),
             ],
@@ -71,13 +74,34 @@ class InfoAkademikStep extends StatelessWidget {
           _label('Prestasi (sertifikat, piagam, hingga piala)'),
           const SizedBox(height: 4),
           Text(
-            '*Upload maksimum 10 file yang didukung : jpeg, jpg, png. Maks 200kb per file.',
+            '*Upload maksimum 10 file yang didukung : jpeg, jpg, png, pdf. Maks 5MB per file.',
             style: AppTextStyles.bodySmall.copyWith(
               color: AppColors.gray400,
               fontSize: 11,
             ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 12),
+
+          if (newFiles.isNotEmpty) ...[
+            ...newFiles.map((file) => Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Row(
+                children: [
+                  const Icon(LucideIcons.fileText, size: 16, color: AppColors.gray500),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(file.name, style: const TextStyle(fontSize: 12, color: Colors.black54), overflow: TextOverflow.ellipsis),
+                  ),
+                  if (onRemoveFile != null)
+                    GestureDetector(
+                      onTap: () => onRemoveFile!(file),
+                      child: const Icon(Icons.close, size: 16, color: Colors.red),
+                    ),
+                ],
+              ),
+            )),
+            const SizedBox(height: 12),
+          ],
 
           // Upload file button
           GestureDetector(

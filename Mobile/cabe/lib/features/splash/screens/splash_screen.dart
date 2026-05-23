@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cabe/features/onboarding/screens/onboarding_screen.dart';
 import 'package:cabe/core/routing/main_navigation.dart';
 import 'package:cabe/core/theme/app_colors.dart';
+import 'package:cabe/core/services/ai_service.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -52,6 +53,9 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
       _controller.forward(from: 0.8);
     }
     await Future.delayed(const Duration(milliseconds: 1500));
+
+    // Cek koneksi ke Server AI (Consume endpoint / dan /health)
+    await AiService.checkServerHealth();
 
     if (mounted) {
       // Check apakah user sudah login

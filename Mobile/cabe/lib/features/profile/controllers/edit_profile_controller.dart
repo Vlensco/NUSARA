@@ -4,6 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'dart:io';
+import 'dart:typed_data';
 
 /// Daftar opsi minat & bakat default.
 const List<String> defaultMinatBakatOptions = [
@@ -180,6 +181,7 @@ class EditProfileController extends ChangeNotifier {
         type: type,
         allowedExtensions: extensions,
         allowMultiple: true,
+        withData: true,
       );
 
       if (result != null) {
@@ -187,10 +189,10 @@ class EditProfileController extends ChangeNotifier {
         String? errorMessage;
 
         for (var file in result.files) {
-          if (file.size <= 200 * 1024) {
+          if (file.size <= 5 * 1024 * 1024) {
             validFiles.add(file);
           } else {
-            errorMessage = 'File ${file.name} melebihi batas 200kb';
+            errorMessage = 'File ${file.name} melebihi batas 5MB';
           }
         }
 
@@ -210,6 +212,17 @@ class EditProfileController extends ChangeNotifier {
     return null;
   }
 
+  // ── Remove Files ──
+  void removePrestasiFile(String fileName) {
+    prestasiFiles.remove(fileName);
+    notifyListeners();
+  }
+
+  void removeNewFile(PlatformFile file) {
+    newFiles.remove(file);
+    notifyListeners();
+  }
+
   // ── Save to Firestore ──
   Future<String?> saveData() async {
     isLoading = true;
@@ -222,19 +235,23 @@ class EditProfileController extends ChangeNotifier {
       // Upload file baru ke Firebase Storage
       List<String> uploadedFileNames = [];
       for (final platformFile in newFiles) {
-        if (platformFile.path != null) {
-          final file = File(platformFile.path!);
-          final filePath = 'prestasi/${user.uid}/${platformFile.name}';
-
-          try {
-            final ref = FirebaseStorage.instance.ref().child(filePath);
-            await ref.putFile(file);
-            uploadedFileNames.add(platformFile.name);
-          } catch (uploadError) {
-            debugPrint('Upload error for ${platformFile.name}: $uploadError');
-            uploadedFileNames.add(platformFile.name);
+        final filePath = 'prestasi/${user.uid}/${platformFile.name}';
+        try {
+          final ref = FirebaseStorage.instance.ref().child(filePath);
+          final Uint8List fileBytes;
+          if (platformFile.bytes != null) {
+            fileBytes = platformFile.bytes!;
+          } else if (platformFile.path != null) {
+            fileBytes = await File(platformFile.path!).readAsBytes();
+          } else {
+            return 'File ${platformFile.name} tidak memiliki data atau path yang valid';
           }
-        } else {
+          await ref.putData(fileBytes);
+          uploadedFileNames.add(platformFile.name);
+        } catch (uploadError) {
+          debugPrint('Upload error for ${platformFile.name}: $uploadError');
+          // Jika gagal upload ke Storage (misal karena bucket belum dibuat atau rules error),
+          // kita tetap simpan nama file ke Firestore agar pengguna tidak stuck.
           uploadedFileNames.add(platformFile.name);
         }
       }

@@ -37,56 +37,7 @@ class _EditProfileDialogState extends ConsumerState<EditProfileDialog> {
     super.dispose();
   }
 
-  void _handlePickFile() {
-    showModalBottomSheet(
-      context: context,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (ctx) => SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 16),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: Colors.grey[300],
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-              const SizedBox(height: 16),
-              const Text(
-                "Pilih sumber file",
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-              ),
-              const SizedBox(height: 12),
-              ListTile(
-                leading: const Icon(Icons.photo_library_outlined, color: AppColors.blue900),
-                title: const Text("Dari Galeri"),
-                subtitle: const Text("Pilih gambar dari galeri foto", style: TextStyle(fontSize: 12)),
-                onTap: () {
-                  Navigator.of(ctx).pop();
-                  _pickAndHandleError(() => _controller.pickFromGallery());
-                },
-              ),
-              ListTile(
-                leading: const Icon(Icons.folder_outlined, color: AppColors.blue900),
-                title: const Text("Dari File"),
-                subtitle: const Text("Pilih file JPG, PNG, atau PDF", style: TextStyle(fontSize: 12)),
-                onTap: () {
-                  Navigator.of(ctx).pop();
-                  _pickAndHandleError(() => _controller.pickFromFiles());
-                },
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
+
 
   void _pickAndHandleError(Future<String?> Function() picker) async {
     final error = await picker();
@@ -258,21 +209,95 @@ class _EditProfileDialogState extends ConsumerState<EditProfileDialog> {
           ),
           const SizedBox(height: 4),
           const Text(
-            "*Upload maksimum 10 file yang didukung : jpeg, jpg, png. Maks 200kb per file.",
+            "*Upload maksimum 10 file yang didukung : jpeg, jpg, png, pdf. Maks 5MB per file.",
             style: TextStyle(fontSize: 11, color: Colors.black54),
           ),
           const SizedBox(height: 12),
 
           // File list dari DB
-          ..._controller.prestasiFiles.map((name) => _buildFileRow(name)),
+          ..._controller.prestasiFiles.map((name) => _buildFileRow(
+                name,
+                onDelete: () => _controller.removePrestasiFile(name),
+              )),
           // File baru yang dipilih
-          ..._controller.newFiles.map((file) => _buildFileRow(file.name)),
+          ..._controller.newFiles.map((file) => _buildFileRow(
+                file.name,
+                onDelete: () => _controller.removeNewFile(file),
+              )),
 
           const SizedBox(height: 12),
 
           // Tombol upload
-          GestureDetector(
-            onTap: _handlePickFile,
+          PopupMenuButton<String>(
+            elevation: 4,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+              side: const BorderSide(color: Colors.black12, width: 1),
+            ),
+            color: Colors.white,
+            position: PopupMenuPosition.under,
+            onSelected: (value) {
+              if (value == 'gallery') {
+                _pickAndHandleError(() => _controller.pickFromGallery());
+              } else if (value == 'file') {
+                _pickAndHandleError(() => _controller.pickFromFiles());
+              }
+            },
+            itemBuilder: (context) => [
+              PopupMenuItem<String>(
+                value: 'gallery',
+                child: Row(
+                  children: [
+                    const Icon(Icons.photo_library_outlined, color: AppColors.blue900, size: 20),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: const [
+                          Text(
+                            "Dari Galeri",
+                            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.black87),
+                          ),
+                          SizedBox(height: 2),
+                          Text(
+                            "Pilih gambar dari galeri foto",
+                            style: TextStyle(fontSize: 10, color: Colors.black54),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const PopupMenuDivider(height: 1),
+              PopupMenuItem<String>(
+                value: 'file',
+                child: Row(
+                  children: [
+                    const Icon(Icons.folder_outlined, color: AppColors.blue900, size: 20),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: const [
+                          Text(
+                            "Dari File",
+                            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.black87),
+                          ),
+                          SizedBox(height: 2),
+                          Text(
+                            "Pilih file JPG, PNG, atau PDF",
+                            style: TextStyle(fontSize: 10, color: Colors.black54),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
             child: Container(
               width: double.infinity,
               padding: const EdgeInsets.symmetric(vertical: 12),
@@ -413,7 +438,7 @@ class _EditProfileDialogState extends ConsumerState<EditProfileDialog> {
     );
   }
 
-  Widget _buildFileRow(String fileName) {
+  Widget _buildFileRow(String fileName, {VoidCallback? onDelete}) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 4),
       child: Row(
@@ -423,6 +448,11 @@ class _EditProfileDialogState extends ConsumerState<EditProfileDialog> {
           Expanded(
             child: Text(fileName, style: const TextStyle(fontSize: 12, color: Colors.black54), overflow: TextOverflow.ellipsis),
           ),
+          if (onDelete != null)
+            GestureDetector(
+              onTap: onDelete,
+              child: const Icon(Icons.close, size: 16, color: Colors.red),
+            ),
         ],
       ),
     );

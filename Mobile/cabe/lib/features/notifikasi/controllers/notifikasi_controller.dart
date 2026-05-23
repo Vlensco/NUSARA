@@ -50,7 +50,7 @@ class NotifikasiNotifier extends Notifier<List<NotifikasiModel>> {
 
       String? message;
       NotifikasiType? type;
-      final contentKey = '${newItem.id}_${newItem.status.name}';
+      final contentKey = '${newItem.title}_${newItem.status.name}';
 
       // Skip jika notifikasi ini sudah pernah dibuat
       if (_existingContentKeys.contains(contentKey)) continue;
@@ -141,28 +141,12 @@ class NotifikasiNotifier extends Notifier<List<NotifikasiModel>> {
   /// Track content key berdasarkan title + message agar tidak duplikat
   void _trackContentKey(String title, String message) {
     if (message.contains('tahap peninjauan')) {
-      final acronym = _findAcronymByTitle(title);
-      if (acronym != null) _existingContentKeys.add('${acronym}_ditinjau');
+      _existingContentKeys.add('${title}_ditinjau');
     } else if (message.contains('telah diterima')) {
-      final acronym = _findAcronymByTitle(title);
-      if (acronym != null) _existingContentKeys.add('${acronym}_diterima');
+      _existingContentKeys.add('${title}_diterima');
     } else if (message.contains('telah menolak')) {
-      final acronym = _findAcronymByTitle(title);
-      if (acronym != null) _existingContentKeys.add('${acronym}_ditolak');
+      _existingContentKeys.add('${title}_ditolak');
     }
-  }
-
-  String? _findAcronymByTitle(String title) {
-    const titleToAcronym = {
-      'Beasiswa Unggulan Kemendikbud': 'BUK',
-      'Beasiswa Atlet Berprestasi KONI': 'BAPK',
-      'Beasiswa Seni Budaya Nusantara': 'BSND',
-      'Paragon for Future Leaders': 'PPT',
-      'LPDP Beasiswa Reguler': 'LPDP',
-      'Beasiswa Astra 1st': 'AI',
-      'TELADAN - Tanoto Foundation': 'TF',
-    };
-    return titleToAcronym[title];
   }
 
   /// Insert notifikasi ke Firestore

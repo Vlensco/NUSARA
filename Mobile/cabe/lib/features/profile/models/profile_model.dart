@@ -7,21 +7,25 @@ class ProfileModel {
   final double progress;
   final String status;
 
-  final int profileCompletionScore;
-  final int profileCompletionMax;
-  final double profileCompletionProgress;
+  final int academicScore;
+  final int academicMax;
+  final double academicProgress;
 
-  final int documentReadinessScore;
-  final int documentReadinessMax;
-  final double documentReadinessProgress;
+  final int financialScore;
+  final int financialMax;
+  final double financialProgress;
 
-  final int academicStrengthScore;
-  final int academicStrengthMax;
-  final double academicStrengthProgress;
+  final int nonAcademicScore;
+  final int nonAcademicMax;
+  final double nonAcademicProgress;
 
-  final int activityAchievementScore;
-  final int activityAchievementMax;
-  final double activityAchievementProgress;
+  final int certRecScore;
+  final int certRecMax;
+  final double certRecProgress;
+
+  final int motivationScore;
+  final int motivationMax;
+  final double motivationProgress;
 
   final int savedCount;
   final int reviewedCount;
@@ -39,18 +43,21 @@ class ProfileModel {
     required this.score,
     required this.progress,
     required this.status,
-    required this.profileCompletionScore,
-    required this.profileCompletionMax,
-    required this.profileCompletionProgress,
-    required this.documentReadinessScore,
-    required this.documentReadinessMax,
-    required this.documentReadinessProgress,
-    required this.academicStrengthScore,
-    required this.academicStrengthMax,
-    required this.academicStrengthProgress,
-    required this.activityAchievementScore,
-    required this.activityAchievementMax,
-    required this.activityAchievementProgress,
+    required this.academicScore,
+    required this.academicMax,
+    required this.academicProgress,
+    required this.financialScore,
+    required this.financialMax,
+    required this.financialProgress,
+    required this.nonAcademicScore,
+    required this.nonAcademicMax,
+    required this.nonAcademicProgress,
+    required this.certRecScore,
+    required this.certRecMax,
+    required this.certRecProgress,
+    required this.motivationScore,
+    required this.motivationMax,
+    required this.motivationProgress,
     required this.savedCount,
     required this.reviewedCount,
     required this.acceptedCount,

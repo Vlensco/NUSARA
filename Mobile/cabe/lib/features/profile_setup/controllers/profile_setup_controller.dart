@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_storage/firebase_storage.dart';
+import 'package:file_picker/file_picker.dart';
+import 'dart:io';
+import 'dart:typed_data';
 import 'package:cabe/features/profile_setup/models/profile_setup_data.dart';
 import 'package:cabe/features/profile_setup/screens/welcome_screen.dart';
 
@@ -19,7 +23,7 @@ class ProfileSetupController extends ChangeNotifier {
   final kelasController = TextEditingController();
   final jurusanController = TextEditingController();
   final nilaiController = TextEditingController();
-  final prestasiController = TextEditingController();
+  List<PlatformFile> newFiles = [];
 
   ProfileSetupController() {
     namaController.addListener(notifyListeners);
@@ -30,7 +34,6 @@ class ProfileSetupController extends ChangeNotifier {
     kelasController.addListener(notifyListeners);
     jurusanController.addListener(notifyListeners);
     nilaiController.addListener(notifyListeners);
-    prestasiController.addListener(notifyListeners);
   }
 
   @override
@@ -42,8 +45,43 @@ class ProfileSetupController extends ChangeNotifier {
     kelasController.dispose();
     jurusanController.dispose();
     nilaiController.dispose();
-    prestasiController.dispose();
     super.dispose();
+  }
+
+  // File Picker Logic
+  Future<void> pickFiles(BuildContext context) async {
+    try {
+      FilePickerResult? result = await FilePicker.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['jpg', 'jpeg', 'png', 'pdf'],
+        allowMultiple: true,
+        withData: true,
+      );
+
+      if (result != null) {
+        for (var file in result.files) {
+          if (file.size <= 5 * 1024 * 1024) {
+            if (newFiles.length < 10) {
+              newFiles.add(file);
+            } else {
+              _showError(context, 'Maksimal 10 file yang diperbolehkan');
+              break;
+            }
+          } else {
+            _showError(context, 'File ${file.name} melebihi batas 5MB');
+          }
+        }
+        notifyListeners();
+      }
+    } catch (e) {
+      debugPrint("Error picking file: $e");
+      _showError(context, 'Gagal memilih file');
+    }
+  }
+
+  void removeFile(PlatformFile file) {
+    newFiles.remove(file);
+    notifyListeners();
   }
 
   // Navigation Logic
@@ -80,16 +118,7 @@ class ProfileSetupController extends ChangeNotifier {
   }
 
   bool _validateCurrentStep(BuildContext context) {
-    if (currentStep == 0 && !isCurrentStepValid) {
-      _showError(context, "Yuk, lengkapi profilmu dulu! Atau klik 'Lewati' kalau mau diisi nanti.");
-      return false;
-    } else if (currentStep == 1 && !isCurrentStepValid) {
-      _showError(context, "Yuk, lengkapi profilmu dulu! Atau klik 'Lewati' kalau mau diisi nanti.");
-      return false;
-    } else if (currentStep == 2 && !isCurrentStepValid) {
-      _showError(context, "Yuk, lengkapi profilmu dulu! Atau klik 'Lewati' kalau mau diisi nanti.");
-      return false;
-    } else if (currentStep == 3 && !isCurrentStepValid) {
+    if (!isCurrentStepValid) {
       _showError(context, "Yuk, lengkapi profilmu dulu! Atau klik 'Lewati' kalau mau diisi nanti.");
       return false;
     }
@@ -142,13 +171,13 @@ class ProfileSetupController extends ChangeNotifier {
         profileData.kelas = kelasController.text;
         profileData.jurusan = jurusanController.text;
         profileData.nilaiRataRata = nilaiController.text;
-        profileData.prestasi = prestasiController.text;
+        // Files are saved when finishSetup is called
         break;
     }
   }
 
   Future<void> finishSetup(BuildContext context) async {
-    _saveCurrentStep(); // Memastikan step terakhir ikut tersimpan ke profileData
+    _saveCurrentStep();
 
     final user = FirebaseAuth.instance.currentUser;
 
@@ -158,13 +187,33 @@ class ProfileSetupController extends ChangeNotifier {
     }
 
     try {
-      // Konversi nilai menjadi desimal (jika ada)
+      List<String> uploadedFileNames = [];
+      for (final platformFile in newFiles) {
+        final filePath = 'prestasi/${user.uid}/${platformFile.name}';
+        try {
+          final ref = FirebaseStorage.instance.ref().child(filePath);
+          final Uint8List fileBytes;
+          if (platformFile.bytes != null) {
+            fileBytes = platformFile.bytes!;
+          } else if (platformFile.path != null) {
+            fileBytes = await File(platformFile.path!).readAsBytes();
+          } else {
+            _showError(context, 'File ${platformFile.name} tidak memiliki data atau path yang valid');
+            return;
+          }
+          await ref.putData(fileBytes);
+          uploadedFileNames.add(platformFile.name);
+        } catch (uploadError) {
+          debugPrint('Upload error for ${platformFile.name}: $uploadError');
+          uploadedFileNames.add(platformFile.name);
+        }
+      }
+
       double? nilai;
       if (profileData.nilaiRataRata.isNotEmpty) {
         nilai = double.tryParse(profileData.nilaiRataRata.replaceAll(',', '.'));
       }
 
-      // Simpan data ke Firestore users/{uid}
       await FirebaseFirestore.instance.collection('users').doc(user.uid).set({
         'nama_lengkap': profileData.namaLengkap,
         'tanggal_lahir': profileData.tanggalLahir.isEmpty ? null : profileData.tanggalLahir,
@@ -173,7 +222,7 @@ class ProfileSetupController extends ChangeNotifier {
         'kelas': profileData.kelas,
         'jurusan': profileData.jurusan,
         'nilai_rata_rata': nilai,
-        'prestasi': profileData.prestasi,
+        'prestasi': uploadedFileNames,
         'minat_bakat': profileData.minatBakat,
         'sumber_pendanaan': profileData.sumberPendanaan,
         'jenis_beasiswa': profileData.jenisBeasiswa,
@@ -194,7 +243,6 @@ class ProfileSetupController extends ChangeNotifier {
     }
   }
 
-  // Chips Toggle Logic
   void toggleMinatBakat(String item) {
     if (profileData.minatBakat.contains(item)) {
       profileData.minatBakat.remove(item);

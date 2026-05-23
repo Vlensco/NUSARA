@@ -28,7 +28,9 @@ class ProfileSetupContent extends StatelessWidget {
           kelasController: controller.kelasController,
           jurusanController: controller.jurusanController,
           nilaiController: controller.nilaiController,
-          prestasiController: controller.prestasiController,
+          newFiles: controller.newFiles,
+          onUploadFile: () => controller.pickFiles(context),
+          onRemoveFile: controller.removeFile,
         );
       case 2:
         return MinatBakatStep(
