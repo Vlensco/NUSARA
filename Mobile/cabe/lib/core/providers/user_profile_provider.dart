@@ -2,22 +2,22 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
-final userProfileProvider = FutureProvider<Map<String, dynamic>?>((ref) async {
+/// StreamProvider yang mendengarkan perubahan dokumen user secara real-time.
+/// Setiap kali data Firestore berubah (misal setelah edit profil atau save skor),
+/// semua widget yang watch provider ini akan otomatis rebuild.
+final userProfileProvider = StreamProvider<Map<String, dynamic>?>((ref) {
   final user = FirebaseAuth.instance.currentUser;
 
   if (user == null) {
-    return null;
+    return Stream.value(null);
   }
 
-  try {
-    final doc = await FirebaseFirestore.instance
-        .collection('users')
-        .doc(user.uid)
-        .get();
-
-    if (!doc.exists) return null;
-    return doc.data();
-  } catch (e) {
-    return null;
-  }
+  return FirebaseFirestore.instance
+      .collection('users')
+      .doc(user.uid)
+      .snapshots()
+      .map((snapshot) {
+    if (!snapshot.exists) return null;
+    return snapshot.data();
+  });
 });

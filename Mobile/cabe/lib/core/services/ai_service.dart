@@ -41,32 +41,34 @@ class AiService {
     }
   }
 
-  /// Kirim profil user ke AI backend dan dapatkan persentase kecocokan
-  /// [scholarshipContext] adalah deskripsi singkat syarat beasiswanya
-  static Future<int> getMatchPercentage({
-    required double nilaiRataRata,
-    required String kelas,
-    required String jurusan,
-    required List<String> minatBakat,
-    required List<String> prestasi,
+  // ═══════════════════════════════════════════
+  // LIGHTWEIGHT MATCHING (Pencocokan Beasiswa)
+  // ═══════════════════════════════════════════
+
+  /// Kirim profil user + syarat beasiswa ke backend untuk pencocokan.
+  /// Backend menghitung match secara deterministik, AI hanya buat pesan motivasi.
+  static Future<MatchResult> getMatch({
+    required String userJenjang,
+    required int userUsia,
+    required String userBidangStudi,
+    required double userIpk,
     required String scholarshipTitle,
-    required Map<String, String> scholarshipCriteria,
+    required List<String> reqJenjang,
+    required int reqBatasUsia,
+    required List<String> reqBidangStudi,
+    required double reqMinIpk,
   }) async {
     try {
-      // Normalisasi nilai (jika skala 0-100, bagi 10)
-      final nilaiNormalized = nilaiRataRata > 10 ? nilaiRataRata / 10 : nilaiRataRata;
-      final minNilaiStr = scholarshipCriteria['Min. Nilai Rapor'];
-      final minNilai = minNilaiStr != null ? (double.tryParse(minNilaiStr) ?? 70.0) : 70.0;
-
       final body = {
-        'ipk': nilaiNormalized,
-        'semester': _kelasToSemester(kelas),
-        'jurusan': jurusan.isNotEmpty ? jurusan : 'Umum',
-        'provinsi': 'Indonesia',
-        'pendapatan_ortu': 3000000,
-        'prestasi_count': prestasi.length,
+        'user_jenjang': userJenjang,
+        'user_usia': userUsia,
+        'user_bidang_studi': userBidangStudi,
+        'user_ipk': userIpk,
         'scholarship_title': scholarshipTitle,
-        'min_nilai': minNilai,
+        'req_jenjang': reqJenjang,
+        'req_batas_usia': reqBatasUsia,
+        'req_bidang_studi': reqBidangStudi,
+        'req_min_ipk': reqMinIpk,
       };
 
       final response = await http.post(
@@ -77,122 +79,340 @@ class AiService {
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-        // Backend sekarang mengembalikan field match_percentage langsung
-        final pct = data['match_percentage'] as int? ?? 0;
-        if (pct > 0) return pct;
-        // Fallback: coba ekstrak dari teks jika field 0
-        final resultText = data['result'] as String? ?? '';
-        return _extractPercentage(resultText, scholarshipTitle, nilaiRataRata, kelas, jurusan, minatBakat, prestasi, scholarshipCriteria);
+        return MatchResult(
+          matchPercentage: data['match_percentage'] as int? ?? 0,
+          matchedParams: data['matched_params'] as int? ?? 0,
+          totalParams: data['total_params'] as int? ?? 4,
+          aiMessage: data['ai_message'] as String? ?? '',
+        );
       } else {
-        debugPrint('AI API error: ${response.statusCode}');
-        return _fallbackMatch(nilaiRataRata, kelas, jurusan, minatBakat, prestasi, scholarshipCriteria);
+        debugPrint('Match API error: ${response.statusCode}');
+        return _fallbackLightweightMatch(
+          userJenjang, userUsia, userBidangStudi, userIpk,
+          scholarshipTitle, reqJenjang, reqBatasUsia, reqBidangStudi, reqMinIpk,
+        );
       }
     } catch (e) {
-      debugPrint('AI Service Error (fallback aktif): $e');
-      return _fallbackMatch(nilaiRataRata, kelas, jurusan, minatBakat, prestasi, scholarshipCriteria);
+      debugPrint('Match Service Error (fallback): $e');
+      return _fallbackLightweightMatch(
+        userJenjang, userUsia, userBidangStudi, userIpk,
+        scholarshipTitle, reqJenjang, reqBatasUsia, reqBidangStudi, reqMinIpk,
+      );
     }
   }
 
-  /// Ekstrak angka persentase dari teks respons AI
-  static int _extractPercentage(
-    String text,
+  /// Fallback client-side lightweight matching jika AI backend offline
+  static MatchResult _fallbackLightweightMatch(
+    String userJenjang,
+    int userUsia,
+    String userBidangStudi,
+    double userIpk,
     String scholarshipTitle,
-    double nilai,
-    String kelas,
-    String jurusan,
-    List<String> minat,
-    List<String> prestasi,
-    Map<String, String> criteria,
+    List<String> reqJenjang,
+    int reqBatasUsia,
+    List<String> reqBidangStudi,
+    double reqMinIpk,
   ) {
-    // Cari pola angka persentase di dalam teks (misal: "85%", "70%", "85 persen")
-    final regexPercent = RegExp(r'(\d{1,3})\s*%');
-    final regexPersen = RegExp(r'(\d{1,3})\s*persen', caseSensitive: false);
+    int totalParams = 4;
+    int fulfilled = 0;
 
-    Iterable<RegExpMatch> matches = regexPercent.allMatches(text);
-    if (matches.isEmpty) {
-      matches = regexPersen.allMatches(text);
+    // 1. Jenjang Pendidikan
+    if (reqJenjang.contains(userJenjang) || reqJenjang.contains('Semua Jenjang')) {
+      fulfilled++;
+    }
+    // 2. Batas Usia
+    if (userUsia <= reqBatasUsia) {
+      fulfilled++;
+    }
+    // 3. Bidang Studi
+    if (reqBidangStudi.contains(userBidangStudi) || reqBidangStudi.contains('Semua Jurusan')) {
+      fulfilled++;
+    }
+    // 4. Nilai Akademik
+    if (userIpk >= reqMinIpk) {
+      fulfilled++;
     }
 
-    if (matches.isNotEmpty) {
-      final values = matches
-          .map((m) => int.tryParse(m.group(1) ?? '0') ?? 0)
-          .where((v) => v > 0 && v <= 100)
-          .toList();
+    final percentage = ((fulfilled / totalParams) * 100).toInt();
 
-      if (values.isNotEmpty) {
-        // Ambil rata-rata semua angka persentase yang ditemukan
-        final avg = values.reduce((a, b) => a + b) ~/ values.length;
-        return avg.clamp(0, 100);
-      }
-    }
-
-    // Jika AI tidak bisa ekstrak, fallback ke rule-based
-    return _fallbackMatch(nilai, kelas, jurusan, minat, prestasi, criteria);
-  }
-
-  /// Rule-based fallback jika AI backend tidak tersedia (Publik untuk Instant UI loading)
-  static int fallbackMatch({
-    required double nilaiRataRata,
-    required String kelas,
-    required String jurusan,
-    required List<String> minatBakat,
-    required List<String> prestasi,
-    required Map<String, String> scholarshipCriteria,
-  }) {
-    return _fallbackMatch(nilaiRataRata, kelas, jurusan, minatBakat, prestasi, scholarshipCriteria);
-  }
-
-  /// Rule-based fallback jika AI backend tidak tersedia
-  static int _fallbackMatch(
-    double nilai,
-    String kelas,
-    String jurusan,
-    List<String> minat,
-    List<String> prestasi,
-    Map<String, String> criteria,
-  ) {
-    int score = 0;
-
-    // Cek nilai minimum
-    final minNilaiStr = criteria['Min. Nilai Rapor'];
-    if (minNilaiStr != null) {
-      final minNilai = double.tryParse(minNilaiStr) ?? 0;
-      final nilaiScaled = nilai > 10 ? nilai : nilai * 10; // normalisasi 0-10 ke 0-100
-      if (nilaiScaled >= minNilai) {
-        score += 40;
-      } else if (nilaiScaled >= minNilai - 5) {
-        score += 20;
-      }
+    // Generate fallback message
+    String aiMessage;
+    if (percentage >= 70) {
+      aiMessage = 'Selamat! Profilmu sangat cocok dengan $scholarshipTitle. Yuk segera siapkan dokumen pendaftarannya!';
     } else {
-      score += 40;
+      aiMessage = 'Jangan menyerah! Kamu masih bisa meningkatkan profilmu. Yuk cari beasiswa lain yang lebih pas untukmu!';
     }
 
-    // Cek kelas
-    final kelasCriteria = criteria['Kelas'] ?? '';
-    if (kelasCriteria.contains(kelas.replaceAll('Kelas ', '').replaceAll(' ', ''))) {
-      score += 30;
-    } else if (kelasCriteria.isEmpty) {
-      score += 30;
-    }
-
-    // Cek jurusan
-    final jurusanCriteria = criteria['Jurusan'] ?? '';
-    if (jurusanCriteria.contains(jurusan) || jurusanCriteria.contains('Semua')) {
-      score += 20;
-    } else if (jurusanCriteria.isEmpty) {
-      score += 20;
-    }
-
-    // Bonus prestasi
-    if (prestasi.isNotEmpty) score += 10;
-
-    return score.clamp(0, 100);
+    return MatchResult(
+      matchPercentage: percentage,
+      matchedParams: fulfilled,
+      totalParams: totalParams,
+      aiMessage: aiMessage,
+    );
   }
 
-  static int _kelasToSemester(String kelas) {
-    final k = kelas.replaceAll(RegExp(r'[^0-9]'), '');
-    final num = int.tryParse(k) ?? 10;
-    // Kelas 10 = semester 1, Kelas 11 = semester 3, Kelas 12 = semester 5
-    return ((num - 9) * 2) - 1;
+  /// Public fallback untuk instant UI loading (tanpa menunggu backend)
+  static MatchResult fallbackMatch({
+    required String userJenjang,
+    required int userUsia,
+    required String userBidangStudi,
+    required double userIpk,
+    required String scholarshipTitle,
+    required List<String> reqJenjang,
+    required int reqBatasUsia,
+    required List<String> reqBidangStudi,
+    required double reqMinIpk,
+  }) {
+    return _fallbackLightweightMatch(
+      userJenjang, userUsia, userBidangStudi, userIpk,
+      scholarshipTitle, reqJenjang, reqBatasUsia, reqBidangStudi, reqMinIpk,
+    );
   }
+
+  // ═══════════════════════════════════════════
+  // READINESS SCORE (Skor Kesiapan Beasiswa)
+  // ═══════════════════════════════════════════
+
+  /// Kirim profil ke AI backend dan dapatkan skor kesiapan + tips dari AI
+  static Future<ReadinessResult> getReadinessScore({
+    required double nilaiRapor,
+    required String tipeNilai,
+    required String penghasilanOrtu,
+    required String bantuanSosial,
+    required String tanggungan,
+    required String pekerjaanOrtu,
+    required String levelPrestasi,
+    required String jumlahPrestasi,
+    required String organisasi,
+    required String aktivitasTambahan,
+    required List<String> dokumenPendukung,
+    required String kejelasanTujuan,
+    required String tujuanKarir,
+    required String keterkaitan,
+    String userName = 'Pengguna',
+  }) async {
+    try {
+      final body = {
+        'user_name': userName,
+        'nilai_rapor': nilaiRapor,
+        'tipe_nilai': tipeNilai,
+        'penghasilan_ortu': penghasilanOrtu,
+        'bantuan_sosial': bantuanSosial,
+        'tanggungan': tanggungan,
+        'pekerjaan_ortu': pekerjaanOrtu,
+        'level_prestasi': levelPrestasi,
+        'jumlah_prestasi': jumlahPrestasi,
+        'organisasi': organisasi,
+        'aktivitas_tambahan': aktivitasTambahan,
+        'dokumen_pendukung': dokumenPendukung,
+        'kejelasan_tujuan': kejelasanTujuan,
+        'tujuan_karir': tujuanKarir,
+        'keterkaitan': keterkaitan,
+      };
+
+      final response = await http.post(
+        Uri.parse('$_baseUrl/api/readiness'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode(body),
+      ).timeout(const Duration(seconds: 45));
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return ReadinessResult(
+          totalScore: (data['total_score'] as num).toDouble(),
+          skorAkademik: (data['skor_akademik'] as num).toDouble(),
+          skorFinansial: (data['skor_finansial'] as num).toDouble(),
+          skorNonAkademik: (data['skor_non_akademik'] as num).toDouble(),
+          skorSertifikat: (data['skor_sertifikat'] as num).toDouble(),
+          skorMotivasi: (data['skor_motivasi'] as num).toDouble(),
+          label: data['label'] as String,
+          tips: data['tips'] as String,
+        );
+      } else {
+        debugPrint('Readiness API error: ${response.statusCode}');
+        return _fallbackReadiness(
+          nilaiRapor, tipeNilai, penghasilanOrtu, bantuanSosial, tanggungan, pekerjaanOrtu,
+          levelPrestasi, jumlahPrestasi, organisasi, aktivitasTambahan,
+          dokumenPendukung, kejelasanTujuan, tujuanKarir, keterkaitan,
+        );
+      }
+    } catch (e) {
+      debugPrint('Readiness Service Error (fallback): $e');
+      return _fallbackReadiness(
+        nilaiRapor, tipeNilai, penghasilanOrtu, bantuanSosial, tanggungan, pekerjaanOrtu,
+        levelPrestasi, jumlahPrestasi, organisasi, aktivitasTambahan,
+        dokumenPendukung, kejelasanTujuan, tujuanKarir, keterkaitan,
+      );
+    }
+  }
+
+  /// Fallback client-side scoring jika AI backend tidak tersedia
+  static ReadinessResult _fallbackReadiness(
+    double nilaiRapor,
+    String tipeNilai,
+    String penghasilanOrtu,
+    String bantuanSosial,
+    String tanggungan,
+    String pekerjaanOrtu,
+    String levelPrestasi,
+    String jumlahPrestasi,
+    String organisasi,
+    String aktivitasTambahan,
+    List<String> dokumenPendukung,
+    String kejelasanTujuan,
+    String tujuanKarir,
+    String keterkaitan,
+  ) {
+    // 1. Akademik (40%) — normalisasi berdasarkan tipe
+    double rawAkademik;
+    if (tipeNilai == 'ipk') {
+      rawAkademik = (nilaiRapor * 25).clamp(0, 100);
+    } else {
+      rawAkademik = nilaiRapor.clamp(0, 100);
+    }
+    final finalAkademik = (rawAkademik / 100) * 40;
+
+    // 2. Finansial (25%)
+    double skorFin = 0;
+    if (penghasilanOrtu == '< 1 juta') skorFin += 40;
+    else if (penghasilanOrtu == '1 - 3 Juta') skorFin += 30;
+    else if (penghasilanOrtu == '3 - 5 Juta') skorFin += 20;
+    else skorFin += 10;
+    if (bantuanSosial == 'Ada') skorFin += 25;
+    if (tanggungan == '> 4') skorFin += 20;
+    else if (tanggungan == '3 - 4') skorFin += 15;
+    else if (tanggungan == '1 - 2') skorFin += 10;
+    if (pekerjaanOrtu == 'Tidak Tetap') skorFin += 15;
+    else if (pekerjaanOrtu == 'Informal') skorFin += 10;
+    else if (pekerjaanOrtu == 'Tetap') skorFin += 5;
+    final finalFinansial = (skorFin / 100) * 25;
+
+    // 3. Non-Akademik (25%)
+    double skorNA = 0;
+    if (levelPrestasi == 'Internasional') skorNA += 50;
+    else if (levelPrestasi == 'Nasional') skorNA += 45;
+    else if (levelPrestasi == 'Provinsi') skorNA += 35;
+    else if (levelPrestasi == 'Sekolah') skorNA += 25;
+    if (jumlahPrestasi == '> 3') skorNA += 10;
+    else if (jumlahPrestasi == '2 - 3') skorNA += 7;
+    else if (jumlahPrestasi == '1') skorNA += 5;
+    if (organisasi == 'Ketua / Leader') skorNA += 30;
+    else if (organisasi == 'Pengurus Aktif') skorNA += 20;
+    else if (organisasi == 'Anggota') skorNA += 10;
+    if (aktivitasTambahan == 'Aktif (>2 kegiatan)') skorNA += 10;
+    else if (aktivitasTambahan == 'Pernah ikut') skorNA += 5;
+    final finalNA = (skorNA / 100) * 25;
+
+    // 4. Sertifikat (5%)
+    double skorSert = 0;
+    if (dokumenPendukung.contains('Rekomendasi')) skorSert += 80;
+    if (dokumenPendukung.contains('CV')) skorSert += 10;
+    if (dokumenPendukung.contains('Sertifikat Khusus')) skorSert += 10;
+    final finalSert = (skorSert / 100) * 5;
+
+    // 5. Motivasi (5%)
+    double skorMot = 0;
+    if (kejelasanTujuan == 'Sudah jelas dan spesifik') skorMot += 40;
+    else if (kejelasanTujuan == 'Sudah ada gambaran') skorMot += 25;
+    else if (kejelasanTujuan == 'Belum yakin') skorMot += 10;
+    if (tujuanKarir == 'Sudah jelas') skorMot += 40;
+    else if (tujuanKarir == 'Masih umum') skorMot += 25;
+    else if (tujuanKarir == 'Belum ada') skorMot += 10;
+    if (keterkaitan == 'Sangat sesuai') skorMot += 20;
+    else if (keterkaitan == 'Cukup sesuai') skorMot += 10;
+    final finalMot = (skorMot / 100) * 5;
+
+    final total = finalAkademik + finalFinansial + finalNA + finalSert + finalMot;
+
+    String label;
+    if (total >= 80) {
+      label = 'Sangat Siap!';
+    } else if (total >= 60) {
+      label = 'Siap';
+    } else if (total >= 40) {
+      label = 'Cukup Siap';
+    } else {
+      label = 'Perlu Persiapan';
+    }
+
+    // Tips berdasarkan area terlemah — format terstruktur
+    final areas = {
+      'Akademik': rawAkademik,
+      'Finansial': skorFin,
+      'Non-Akademik': skorNA,
+      'Sertifikat': skorSert,
+      'Motivasi': skorMot,
+    };
+    // Sort by score ascending (weakest first)
+    final sortedAreas = areas.entries.toList()..sort((a, b) => a.value.compareTo(b.value));
+    final top3 = sortedAreas.take(3).toList();
+
+    final fallbackSaran = {
+      'Akademik': 'Tingkatkan nilai akademikmu dengan membuat jadwal belajar teratur dan manfaatkan sumber belajar online.',
+      'Finansial': 'Lengkapi data kondisi finansial dan kumpulkan dokumen pendukung seperti SKTM atau bukti bantuan sosial.',
+      'Non-Akademik': 'Aktif ikuti lomba, organisasi, atau kegiatan ekstrakurikuler untuk memperkuat profilmu.',
+      'Sertifikat': 'Siapkan surat rekomendasi dari guru/dosen, CV yang rapi, dan sertifikat keahlian khusus.',
+      'Motivasi': 'Tuliskan dengan jelas tujuan studi dan karir masa depanmu agar lebih meyakinkan penyeleksi.',
+    };
+
+    final weakest = sortedAreas.first.key;
+    final ringkasan = 'Profilmu menunjukkan beberapa potensi yang bisa ditingkatkan, terutama pada aspek $weakest.';
+
+    final langkah = top3.asMap().entries.map((e) {
+      final aspect = e.value.key;
+      final saran = fallbackSaran[aspect] ?? 'Perkuat aspek ini untuk meningkatkan skor kesiapanmu.';
+      return '${e.key + 1}. **$aspect**: $saran';
+    }).join('\n');
+
+    final formattedTips = 'Ringkasan Evaluasi:\n$ringkasan\n\nLangkah Peningkatan:\n$langkah';
+
+    return ReadinessResult(
+      totalScore: double.parse(total.toStringAsFixed(2)),
+      skorAkademik: double.parse(finalAkademik.toStringAsFixed(2)),
+      skorFinansial: double.parse(finalFinansial.toStringAsFixed(2)),
+      skorNonAkademik: double.parse(finalNA.toStringAsFixed(2)),
+      skorSertifikat: double.parse(finalSert.toStringAsFixed(2)),
+      skorMotivasi: double.parse(finalMot.toStringAsFixed(2)),
+      label: label,
+      tips: formattedTips,
+    );
+  }
+}
+
+/// Model untuk hasil skor kesiapan beasiswa
+class ReadinessResult {
+  final double totalScore;
+  final double skorAkademik;
+  final double skorFinansial;
+  final double skorNonAkademik;
+  final double skorSertifikat;
+  final double skorMotivasi;
+  final String label;
+  final String tips;
+
+  ReadinessResult({
+    required this.totalScore,
+    required this.skorAkademik,
+    required this.skorFinansial,
+    required this.skorNonAkademik,
+    required this.skorSertifikat,
+    required this.skorMotivasi,
+    required this.label,
+    required this.tips,
+  });
+}
+
+/// Model untuk hasil pencocokan beasiswa (Lightweight Matching)
+class MatchResult {
+  final int matchPercentage;
+  final int matchedParams;
+  final int totalParams;
+  final String aiMessage;
+
+  MatchResult({
+    required this.matchPercentage,
+    required this.matchedParams,
+    required this.totalParams,
+    required this.aiMessage,
+  });
 }

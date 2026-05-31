@@ -1,6 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cabe/core/providers/user_profile_provider.dart';
-import 'package:cabe/features/checklist/controllers/checklist_controller.dart';
 import 'package:cabe/features/progress/controllers/progress_controller.dart';
 import '../models/profile_model.dart';
 
@@ -8,7 +7,6 @@ class ProfileController extends Notifier<ProfileModel> {
   @override
   ProfileModel build() {
     final profileAsync = ref.watch(userProfileProvider);
-    final checklistView = ref.watch(checklistViewProvider);
     final progressState = ref.watch(progressProvider);
 
     // Extract database profile values
@@ -17,50 +15,34 @@ class ProfileController extends Notifier<ProfileModel> {
     final school = dbProfile?['nama_sekolah'] as String? ?? '';
     final grade = dbProfile?['kelas'] as String? ?? '';
     final major = dbProfile?['jurusan'] as String? ?? '';
-    
-    // 1. Nilai akademik (IPK/Nilai) (Max 40)
-    final rawNilai = dbProfile?['nilai_rata_rata'];
-    final double nilaiRataRata = (rawNilai is num) ? rawNilai.toDouble() : 0.0;
-    // Scale 0-4 GPA to 0-100 scale, keep if already 0-100 scale
-    final nilaiScaled = nilaiRataRata > 10 ? nilaiRataRata : nilaiRataRata * 25.0;
-    final int gradePoints = ((nilaiScaled / 100) * 30).clamp(0, 30).round();
 
-    final rawToeic = dbProfile?['skor_toeic'];
-    final int toeicScoreVal = (rawToeic is num) ? rawToeic.toInt() : 0;
-    int toeicPoints = 0;
-    if (toeicScoreVal > 0) {
-      if (toeicScoreVal >= 800) toeicPoints = 10;
-      else if (toeicScoreVal >= 600) toeicPoints = 7;
-      else if (toeicScoreVal >= 400) toeicPoints = 4;
-      else toeicPoints = 2;
-    }
-    final int academicScore = gradePoints + toeicPoints;
+    // ─── Readiness scores from Firestore (saved by ReadinessScoreScreen) ───
+    final double totalScore = _toDouble(dbProfile?['readiness_total']);
+    final double akademik = _toDouble(dbProfile?['readiness_akademik']);
+    final double finansial = _toDouble(dbProfile?['readiness_finansial']);
+    final double nonAkademik = _toDouble(dbProfile?['readiness_non_akademik']);
+    final double sertifikat = _toDouble(dbProfile?['readiness_sertifikat']);
+    final double motivasi = _toDouble(dbProfile?['readiness_motivasi']);
+    final String label = dbProfile?['readiness_label'] as String? ?? '';
+    final String tips = dbProfile?['readiness_tips'] as String? ?? '';
 
-    // 2. Kebutuhan Finansial (Max 25)
-    final List<String> sumberPendanaan = dbProfile?['sumber_pendanaan'] is List
-        ? List<String>.from(dbProfile!['sumber_pendanaan'])
-        : [];
-    final List<String> jenisBeasiswa = dbProfile?['jenis_beasiswa'] is List
-        ? List<String>.from(dbProfile!['jenis_beasiswa'])
-        : [];
-    final List<String> cakupanBiaya = dbProfile?['cakupan_biaya'] is List
-        ? List<String>.from(dbProfile!['cakupan_biaya'])
-        : [];
-
-    int financialScore = 0;
-    if (jenisBeasiswa.contains('Beasiswa Kurang Mampu')) {
-      financialScore += 15;
-    } else if (jenisBeasiswa.isNotEmpty) {
-      financialScore += 5;
-    }
-    if (cakupanBiaya.isNotEmpty) {
-      financialScore += 5;
-    }
-    if (sumberPendanaan.isNotEmpty) {
-      financialScore += 5;
+    // Status from Firestore label, or derive from score
+    String status;
+    if (label.isNotEmpty) {
+      status = label;
+    } else if (totalScore == 0) {
+      status = 'Belum Dinilai';
+    } else if (totalScore >= 80) {
+      status = 'Sangat Siap!';
+    } else if (totalScore >= 60) {
+      status = 'Siap';
+    } else if (totalScore >= 40) {
+      status = 'Cukup Siap';
+    } else {
+      status = 'Perlu Persiapan';
     }
 
-    // 3. Prestasi Non-Akademik (Max 25)
+    // ─── Minat & Bakat ───
     List<String> interests = [];
     if (dbProfile?['minat_bakat'] != null) {
       final mb = dbProfile!['minat_bakat'];
@@ -70,8 +52,8 @@ class ProfileController extends Notifier<ProfileModel> {
         interests = mb.split(',').map((e) => e.trim()).toList();
       }
     }
-    final double interestPoints = (interests.length * 2.5).clamp(0.0, 10.0);
 
+    // ─── Prestasi ───
     List<String> achievements = [];
     if (dbProfile?['prestasi'] != null) {
       final pr = dbProfile!['prestasi'];
@@ -81,74 +63,13 @@ class ProfileController extends Notifier<ProfileModel> {
         achievements = pr.split(',').map((e) => e.trim()).toList();
       }
     }
-    final double achievementPoints = (achievements.length * 5.0).clamp(0.0, 15.0);
-    final int nonAcademicScore = (interestPoints + achievementPoints).round();
 
-    // 4. Sertifikat / Kualifikasi Khusus / Surat Rekomendasi (Max 5)
-    int certRecScore = 0;
-    if (achievements.isNotEmpty) {
-      certRecScore += 3;
-    }
-    bool hasCheckedRecOrCert = false;
-    for (final section in checklistView.sections) {
-      for (final item in section.items) {
-        final titleLower = item.title.toLowerCase();
-        if (item.isChecked &&
-            (titleLower.contains('rekomendasi') ||
-             titleLower.contains('sertifikat') ||
-             titleLower.contains('portofolio') ||
-             titleLower.contains('cv') ||
-             titleLower.contains('riwayat'))) {
-          hasCheckedRecOrCert = true;
-          break;
-        }
-      }
-    }
-    if (hasCheckedRecOrCert) {
-      certRecScore += 2;
-    }
+    // ─── Nilai Rapor ───
+    final rawNilai = dbProfile?['nilai_rata_rata'];
+    final double nilaiRataRata = (rawNilai is num) ? rawNilai.toDouble() : 0.0;
 
-    // 5. Motivasi / Rencana Karir (Max 5)
-    int motivationScore = 0;
-    int essayChecked = 0;
-    int essayTotal = 0;
-    for (final section in checklistView.sections) {
-      for (final item in section.items) {
-        final titleLower = item.title.toLowerCase();
-        if (section.title.toLowerCase() == 'esai' ||
-            titleLower.contains('proposal') ||
-            titleLower.contains('rencana')) {
-          essayTotal++;
-          if (item.isChecked) essayChecked++;
-        }
-      }
-    }
-    if (essayTotal > 0) {
-      motivationScore = ((essayChecked / essayTotal) * 5).round();
-    } else {
-      if (interests.isNotEmpty) {
-        motivationScore = 3;
-      }
-    }
-
-    // Total Score (Max 100)
-    final totalScore = academicScore +
-        financialScore +
-        nonAcademicScore +
-        certRecScore +
-        motivationScore;
-    
-    // Status Text
-    String status = 'Belum Siap';
-    if (totalScore == 0) {
-      status = 'Belum Dinilai';
-    } else if (totalScore >= 80) {
-      status = 'Sangat Siap';
-    } else if (totalScore >= 50) {
-      status = 'Cukup Siap';
-    } else if (totalScore >= 25) {
-      status = 'Kurang Siap';
-    }
+    final rawToeic = dbProfile?['skor_toeic'];
+    final int toeicScoreVal = (rawToeic is num) ? rawToeic.toInt() : 0;
 
     // Counts from progressState
     int savedCount = 0;
@@ -165,24 +86,25 @@ class ProfileController extends Notifier<ProfileModel> {
       school: school,
       grade: grade,
       major: major,
-      score: totalScore,
+      score: totalScore.round(),
       progress: totalScore / 100.0,
       status: status,
-      academicScore: academicScore,
+      tips: tips,
+      academicScore: akademik,
       academicMax: 40,
-      academicProgress: academicScore / 40.0,
-      financialScore: financialScore,
+      academicProgress: akademik / 40.0,
+      financialScore: finansial,
       financialMax: 25,
-      financialProgress: financialScore / 25.0,
-      nonAcademicScore: nonAcademicScore,
+      financialProgress: finansial / 25.0,
+      nonAcademicScore: nonAkademik,
       nonAcademicMax: 25,
-      nonAcademicProgress: nonAcademicScore / 25.0,
-      certRecScore: certRecScore,
+      nonAcademicProgress: nonAkademik / 25.0,
+      certRecScore: sertifikat,
       certRecMax: 5,
-      certRecProgress: certRecScore / 5.0,
-      motivationScore: motivationScore,
+      certRecProgress: sertifikat / 5.0,
+      motivationScore: motivasi,
       motivationMax: 5,
-      motivationProgress: motivationScore / 5.0,
+      motivationProgress: motivasi / 5.0,
       savedCount: savedCount,
       reviewedCount: reviewedCount,
       acceptedCount: acceptedCount,
@@ -191,6 +113,14 @@ class ProfileController extends Notifier<ProfileModel> {
       reportScore: nilaiRataRata.round(),
       toeicScore: toeicScoreVal,
     );
+  }
+
+  /// Safely convert Firestore value to double
+  static double _toDouble(dynamic value) {
+    if (value == null) return 0.0;
+    if (value is num) return value.toDouble();
+    if (value is String) return double.tryParse(value) ?? 0.0;
+    return 0.0;
   }
 }
 

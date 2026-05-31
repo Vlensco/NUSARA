@@ -4,6 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cabe/features/notifikasi/models/notifikasi_model.dart';
 import 'package:cabe/features/progress/controllers/progress_controller.dart';
+import 'package:easy_localization/easy_localization.dart';
 
 class NotifikasiNotifier extends Notifier<List<NotifikasiModel>> {
   final Set<String> _removedIds = {};
@@ -71,7 +72,7 @@ class NotifikasiNotifier extends Notifier<List<NotifikasiModel>> {
           id: contentKey, // Temporary ID, akan diupdate setelah insert ke DB
           title: newItem.title,
           message: message,
-          time: 'Baru saja',
+          time: 'notification.time_just_now'.tr(),
           isRead: false,
           type: type,
         );
@@ -178,10 +179,10 @@ class NotifikasiNotifier extends Notifier<List<NotifikasiModel>> {
 
   String _formatTime(DateTime dt) {
     final diff = DateTime.now().difference(dt);
-    if (diff.inMinutes < 1) return 'Baru saja';
-    if (diff.inMinutes < 60) return '${diff.inMinutes} menit lalu';
-    if (diff.inHours < 24) return '${diff.inHours} jam lalu';
-    return '${diff.inDays} hari lalu';
+    if (diff.inMinutes < 1) return 'notification.time_just_now'.tr();
+    if (diff.inMinutes < 60) return 'notification.time_minutes_ago'.tr(args: [diff.inMinutes.toString()]);
+    if (diff.inHours < 24) return 'notification.time_hours_ago'.tr(args: [diff.inHours.toString()]);
+    return 'notification.time_days_ago'.tr(args: [diff.inDays.toString()]);
   }
 
   void _updateState() {

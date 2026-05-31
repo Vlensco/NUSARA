@@ -7,6 +7,7 @@ import 'package:cabe/shared_widgets/scholarship_card.dart';
 import 'package:cabe/features/scholarships/providers/scholarship_provider.dart';
 import 'package:cabe/features/scholarships/screens/detail_beasiswa_page.dart';
 import 'package:cabe/core/providers/user_profile_provider.dart';
+import 'package:easy_localization/easy_localization.dart';
 
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
@@ -34,6 +35,15 @@ class HomeScreen extends ConsumerWidget {
       'Parsial',
     ];
 
+    final List<String> categoryKeys = [
+      'home.cat_all',
+      'home.cat_personalized',
+      'home.cat_government',
+      'home.cat_private',
+      'home.cat_full',
+      'home.cat_partial',
+    ];
+
     final selectedCategory = categories[selectedCategoryIndex];
 
     final scholarships = allScholarships.where((s) {
@@ -43,7 +53,8 @@ class HomeScreen extends ConsumerWidget {
         return s.tags.contains('Swasta') || s.tags.contains('Cooperate');
       }
       return s.tags.contains(selectedCategory);
-    }).toList();
+    }).toList()
+      ..sort((a, b) => b.matchPercentage.compareTo(a.matchPercentage));
 
     return Scaffold(
       backgroundColor: AppColors.coolGray100,
@@ -71,7 +82,7 @@ class HomeScreen extends ConsumerWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'Selamat datang,',
+                            'home.welcome'.tr(),
                             style: AppTextStyles.bodySmall.copyWith(
                               color: AppColors.coolGray300,
                             ),
@@ -103,7 +114,7 @@ class HomeScreen extends ConsumerWidget {
                       borderRadius: BorderRadius.circular(50),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withOpacity(0.25),
+                          color: Colors.black.withValues(alpha: 0.25),
                           blurRadius: 2,
                           spreadRadius: 0,
                           offset: const Offset(0, 2),
@@ -113,7 +124,7 @@ class HomeScreen extends ConsumerWidget {
                     child: TextField(
                       style: AppTextStyles.bodyMedium,
                       decoration: InputDecoration(
-                        hintText: 'Cari beasiswa...',
+                        hintText: 'home.search_hint'.tr(),
                         hintStyle: AppTextStyles.bodyMedium.copyWith(
                           color: AppColors.coolGray400,
                         ),
@@ -152,7 +163,7 @@ class HomeScreen extends ConsumerWidget {
                     (i) => Padding(
                       padding: const EdgeInsets.only(right: 8),
                       child: AppChip(
-                        label: categories[i],
+                        label: categoryKeys[i].tr(),
                         variant: selectedCategoryIndex == i
                             ? AppChipVariant.filled
                             : AppChipVariant.outline,
@@ -177,12 +188,12 @@ class HomeScreen extends ConsumerWidget {
                 children: [
                   Text(
                     selectedCategory == 'Semua'
-                        ? 'Semua Beasiswa'
-                        : 'Beasiswa $selectedCategory',
+                        ? 'home.all_scholarships'.tr()
+                        : '${"home.scholarship".tr()} ${categoryKeys[selectedCategoryIndex].tr()}',
                     style: AppTextStyles.h4,
                   ),
                   Text(
-                    '${scholarships.length} Beasiswa',
+                    '${scholarships.length} ${"home.scholarship_count".tr()}',
                     style: AppTextStyles.bodySmall,
                   ),
                 ],
@@ -203,6 +214,7 @@ class HomeScreen extends ConsumerWidget {
                       title: s.title,
                       provider: s.provider,
                       providerColor: s.providerColor,
+                      logoPath: s.logoPath,
                       tags: List<String>.from(s.tags),
                       matchPercentage: s.matchPercentage,
                       daysLeft: s.daysLeft,

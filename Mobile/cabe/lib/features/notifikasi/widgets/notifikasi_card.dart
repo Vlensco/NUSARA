@@ -3,6 +3,8 @@ import 'package:lucide_icons/lucide_icons.dart';
 import 'package:cabe/core/theme/app_colors.dart';
 import 'package:cabe/core/theme/app_text_styles.dart';
 import 'package:cabe/features/notifikasi/models/notifikasi_model.dart';
+import 'package:easy_localization/easy_localization.dart';
+import 'package:cabe/core/constants/translation_helper.dart';
 
 class NotifikasiCard extends StatelessWidget {
   final NotifikasiModel notifikasi;
@@ -12,8 +14,23 @@ class NotifikasiCard extends StatelessWidget {
     required this.notifikasi,
   });
 
+  String _getTranslatedMessage(String langCode) {
+    final message = notifikasi.message;
+    final title = TranslationHelper.translateTitle(notifikasi.title, langCode);
+    if (message.contains('sedang dalam tahap peninjauan')) {
+      return 'notification.msg_review'.tr(args: [title]);
+    } else if (message.contains('telah diterima')) {
+      return 'notification.msg_accepted'.tr(args: [title]);
+    } else if (message.contains('telah menolak')) {
+      return 'notification.msg_rejected'.tr(args: [title]);
+    }
+    return message;
+  }
+
   @override
   Widget build(BuildContext context) {
+    final langCode = context.locale.languageCode;
+    final displayTitle = TranslationHelper.translateTitle(notifikasi.title, langCode);
     return Container(
       decoration: BoxDecoration(
         color: notifikasi.isRead ? Colors.white : const Color(0xFFEFF6FF),
@@ -53,14 +70,14 @@ class NotifikasiCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      notifikasi.title,
+                      displayTitle,
                       style: AppTextStyles.h4.copyWith(
                         fontSize: 16,
                       ),
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      notifikasi.message,
+                      _getTranslatedMessage(langCode),
                       style: AppTextStyles.bodyMedium.copyWith(
                         fontSize: 12,
                         color: AppColors.gray500,

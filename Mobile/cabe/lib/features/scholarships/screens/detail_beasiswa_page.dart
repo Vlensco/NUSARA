@@ -6,11 +6,60 @@ import '../providers/scholarship_provider.dart';
 import 'package:cabe/shared_widgets/app_tag.dart';
 import 'package:cabe/features/checklist/controllers/checklist_controller.dart';
 import 'package:cabe/core/routing/main_navigation.dart';
+import 'package:easy_localization/easy_localization.dart';
+import 'package:cabe/core/constants/translation_helper.dart';
 
 class DetailBeasiswaPage extends ConsumerWidget {
   final Scholarship scholarship;
 
   const DetailBeasiswaPage({super.key, required this.scholarship});
+
+  String _getTranslatedCriteriaLabel(String label, String langCode) {
+    final lower = label.toLowerCase().trim();
+    if (lower == 'min. nilai rapor') {
+      return 'scholarship.min_report_score'.tr();
+    } else if (lower == 'min. ipk') {
+      return 'scholarship.min_gpa'.tr();
+    } else if (lower == 'kelas') {
+      return 'scholarship.grade'.tr();
+    } else if (lower == 'jurusan') {
+      return 'scholarship.major'.tr();
+    }
+
+    if (lower.contains('ipk') || lower.contains('nilai')) {
+      return 'profile.nilai_ipk'.tr();
+    } else if (lower.contains('finansial') || lower.contains('ekonomi')) {
+      return 'profile.param_finansial'.tr();
+    } else if (lower.contains('prestasi')) {
+      return 'profile.param_prestasi'.tr();
+    } else if (lower.contains('sertifikat') || lower.contains('rekomendasi')) {
+      return 'profile.param_sertifikat'.tr();
+    } else if (lower.contains('motivasi') || lower.contains('rencana')) {
+      return 'profile.param_motivasi'.tr();
+    }
+    return label;
+  }
+
+  String _getTranslatedCriteriaValue(String value, String langCode) {
+    final trimVal = value.trim();
+    if (langCode == 'en') {
+      switch (trimVal) {
+        case 'IPA, IPS, Bahasa': return 'Science, Social, Language';
+        case 'IPA, IPS, Bahasa, SMK': return 'Science, Social, Language, Vocational';
+        case 'SMK': return 'Vocational';
+      }
+    }
+    switch (trimVal.toLowerCase()) {
+      case 'tinggi': return 'scholarship.val_high'.tr();
+      case 'rendah': return 'scholarship.val_low'.tr();
+      case 'sedang': return 'scholarship.val_medium'.tr();
+      case 'sangat siap': return 'scholarship.val_very_ready'.tr();
+      case 'siap': return 'scholarship.val_ready'.tr();
+      case 'cukup siap': return 'scholarship.val_quite_ready'.tr();
+      case 'perlu persiapan': return 'scholarship.val_needs_prep'.tr();
+      default: return value;
+    }
+  }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -18,6 +67,12 @@ class DetailBeasiswaPage extends ConsumerWidget {
           (s) => s.id == scholarship.id,
           orElse: () => scholarship,
         );
+
+    final langCode = context.locale.languageCode;
+    final displayTitle = TranslationHelper.translateTitle(currentScholarship.title, langCode);
+    final displayDescription = TranslationHelper.translateDescription(currentScholarship.description, langCode);
+    final displayRequirements = currentScholarship.requirements.map((req) => TranslationHelper.translateRequirement(req, langCode)).toList();
+    final displayDocuments = currentScholarship.documents.map((doc) => TranslationHelper.translateDocument(doc, langCode)).toList();
 
     return Scaffold(
       backgroundColor: const Color(0xFFFCFCFC), 
@@ -61,7 +116,7 @@ class DetailBeasiswaPage extends ConsumerWidget {
                   ),
                   const SizedBox(height: 15),
                   Text(
-                    currentScholarship.title,
+                    displayTitle,
                     style: const TextStyle(
                       color: Colors.white,
                       fontSize: 22,
@@ -83,7 +138,7 @@ class DetailBeasiswaPage extends ConsumerWidget {
                       ),
                       const SizedBox(width: 5),
                       Text(
-                        "${currentScholarship.matchPercentage}% Kecocokan",
+                        "${currentScholarship.matchPercentage}% ${"scholarship.match".tr()}",
                         style: const TextStyle(color: Colors.white54, fontSize: 13),
                       ),
                       const Spacer(),
@@ -94,7 +149,7 @@ class DetailBeasiswaPage extends ConsumerWidget {
                       ),
                       const SizedBox(width: 5),
                       Text(
-                        "${currentScholarship.daysLeft} Hari Lagi !",
+                        "${currentScholarship.daysLeft} ${"scholarship.days_left".tr()}",
                         style: const TextStyle(color: Colors.white54, fontSize: 13),
                       ),
                     ],
@@ -109,10 +164,10 @@ class DetailBeasiswaPage extends ConsumerWidget {
                         if (acronym != null) {
                           final appliedList = ref.read(appliedScholarshipsProvider);
                           if (appliedList.contains(acronym)) {
-                            _showTopNotification(context, 'Anda sudah daftar beasiswa ini!', true);
+                            _showTopNotification(context, 'scholarship.already_registered'.tr(), true);
                           } else {
                             ref.read(appliedScholarshipsProvider.notifier).add(acronym);
-                            _showTopNotification(context, 'Berhasil didaftar! Silakan cek halaman Checklist untuk mempersiapkan dokumen.', false);
+                            _showTopNotification(context, 'scholarship.register_success'.tr(), false);
                           }
                         }
                       },
@@ -140,9 +195,9 @@ class DetailBeasiswaPage extends ConsumerWidget {
                           return Colors.white;
                         }),
                       ),
-                      child: const Text(
-                        "Daftar Sekarang",
-                        style: TextStyle(
+                      child: Text(
+                        "scholarship.register_now".tr(),
+                        style: const TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.w500,
                         ),
@@ -159,9 +214,9 @@ class DetailBeasiswaPage extends ConsumerWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _buildSectionTitle("Tentang Beasiswa"),
+                  _buildSectionTitle("scholarship.about".tr()),
                   Text(
-                    currentScholarship.description,
+                    displayDescription,
                     style: const TextStyle(
                       color: Colors.black54, 
                       height: 1.5,
@@ -169,13 +224,13 @@ class DetailBeasiswaPage extends ConsumerWidget {
                     ),
                   ),
 
-                  if (currentScholarship.requirements.isNotEmpty) ...[
+                  if (displayRequirements.isNotEmpty) ...[
                     const Padding(
                       padding: EdgeInsets.symmetric(vertical: 10),
                       child: Divider(color: Colors.black12, thickness: 1),
                     ),
-                    _buildSectionTitle("Persyaratan"),
-                    ...currentScholarship.requirements.map((req) => _buildListPoint(req)),
+                    _buildSectionTitle("scholarship.requirements".tr()),
+                    ...displayRequirements.map((req) => _buildListPoint(req)),
                   ],
 
                   if (currentScholarship.criteria.isNotEmpty) ...[
@@ -183,18 +238,18 @@ class DetailBeasiswaPage extends ConsumerWidget {
                       padding: EdgeInsets.symmetric(vertical: 10),
                       child: Divider(color: Colors.black12, thickness: 1),
                     ),
-                    _buildSectionTitle("Kriteria Kelayakan"),
+                    _buildSectionTitle("scholarship.criteria".tr()),
                     ...currentScholarship.criteria.entries.map((entry) =>
-                        _buildCriteriaRow(entry.key, entry.value)),
+                        _buildCriteriaRow(entry.key, entry.value, langCode)),
                   ],
 
-                  if (currentScholarship.documents.isNotEmpty) ...[
+                  if (displayDocuments.isNotEmpty) ...[
                     const Padding(
                       padding: EdgeInsets.symmetric(vertical: 10),
                       child: Divider(color: Colors.black12, thickness: 1),
                     ),
-                    _buildSectionTitle("Dokumen Diperlukan"),
-                    ...currentScholarship.documents.map((doc) => _buildDocumentPoint(doc)),
+                    _buildSectionTitle("scholarship.documents".tr()),
+                    ...displayDocuments.map((doc) => _buildDocumentPoint(doc)),
                   ],
 
                   if (currentScholarship.tags.isNotEmpty) ...[
@@ -334,7 +389,7 @@ class DetailBeasiswaPage extends ConsumerWidget {
     );
   }
 
-  Widget _buildCriteriaRow(String label, String value) {
+  Widget _buildCriteriaRow(String label, String value, String langCode) {
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 12),
@@ -345,9 +400,9 @@ class DetailBeasiswaPage extends ConsumerWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label, style: const TextStyle(color: Colors.black38, fontSize: 14)),
+          Text(_getTranslatedCriteriaLabel(label, langCode), style: const TextStyle(color: Colors.black38, fontSize: 14)),
           Text(
-            value,
+            _getTranslatedCriteriaValue(value, langCode),
             style: const TextStyle(
               fontWeight: FontWeight.bold,
               color: Colors.black,

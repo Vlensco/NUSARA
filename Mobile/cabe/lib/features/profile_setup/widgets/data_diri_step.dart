@@ -1,15 +1,17 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:cabe/core/theme/app_colors.dart';
 import 'package:cabe/core/theme/app_text_styles.dart';
 import 'package:cabe/features/auth/widgets/custom_text_field.dart';
+import 'package:cabe/features/profile_setup/models/profile_setup_data.dart';
 
-/// Step 1: Data Diri
+/// Step 1: Data Diri — dengan dropdown Jenjang Pendidikan
 class DataDiriStep extends StatelessWidget {
   final TextEditingController namaController;
   final TextEditingController tanggalLahirController;
   final TextEditingController jenisKelaminController;
   final TextEditingController sekolahController;
+  final String selectedJenjang;
+  final ValueChanged<String> onJenjangChanged;
 
   const DataDiriStep({
     super.key,
@@ -17,6 +19,8 @@ class DataDiriStep extends StatelessWidget {
     required this.tanggalLahirController,
     required this.jenisKelaminController,
     required this.sekolahController,
+    required this.selectedJenjang,
+    required this.onJenjangChanged,
   });
 
   @override
@@ -84,10 +88,44 @@ class DataDiriStep extends StatelessWidget {
           ),
           const SizedBox(height: 20),
 
-          _label('Nama Sekolah'),
+          // ─── Jenjang Pendidikan Dropdown ───
+          _label('Jenjang Pendidikan'),
+          const SizedBox(height: 8),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            decoration: BoxDecoration(
+              border: Border.all(
+                color: selectedJenjang.isNotEmpty ? AppColors.blue900 : AppColors.gray200,
+              ),
+              borderRadius: BorderRadius.circular(12),
+              color: selectedJenjang.isNotEmpty ? AppColors.blue900.withValues(alpha: 0.04) : Colors.white,
+            ),
+            child: DropdownButtonHideUnderline(
+              child: DropdownButton<String>(
+                value: selectedJenjang.isEmpty ? null : selectedJenjang,
+                hint: Text(
+                  'Pilih jenjang pendidikanmu',
+                  style: AppTextStyles.bodyMedium.copyWith(color: AppColors.gray400),
+                ),
+                isExpanded: true,
+                icon: const Icon(Icons.keyboard_arrow_down, color: AppColors.gray400),
+                items: jenjangOptions.map((opt) => DropdownMenuItem(
+                  value: opt,
+                  child: Text(opt, style: AppTextStyles.bodyMedium),
+                )).toList(),
+                onChanged: (val) {
+                  if (val != null) onJenjangChanged(val);
+                },
+              ),
+            ),
+          ),
+          const SizedBox(height: 20),
+
+          _label('Asal Sekolah / Kampus'),
           const SizedBox(height: 8),
           CustomTextField(
-            hintText: 'SMA / SMK...',
+            hintText: 'Contoh: SMAN 1 Semarang / Universitas Diponegoro',
             controller: sekolahController,
             keyboardType: TextInputType.text,
           ),

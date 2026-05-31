@@ -6,6 +6,7 @@ import 'package:cabe/core/theme/app_colors.dart';
 import 'package:cabe/core/constants/scholarship_ids.dart';
 import 'package:cabe/features/checklist/controllers/checklist_controller.dart';
 import 'package:cabe/features/scholarships/providers/scholarship_provider.dart';
+import 'package:easy_localization/easy_localization.dart';
 
 // ENUMS & MODELS
 enum ProgressStatus { tersimpan, ditinjau, diterima, ditolak }
@@ -41,14 +42,17 @@ class ProgressItem {
   String get subtitle {
     switch (status) {
       case ProgressStatus.tersimpan:
-        if (!isApplied) return 'Segera daftar beasiswa di halaman beasiswa';
-        return 'Dokumen masih kurang ${docsUploaded ?? 0}/${docsTotal ?? 0}! Segera lengkapi';
+        if (!isApplied) return 'progress.sub_saved_unapplied'.tr();
+        return 'progress.sub_saved_applied'.tr(args: [
+          (docsUploaded ?? 0).toString(),
+          (docsTotal ?? 0).toString(),
+        ]);
       case ProgressStatus.ditinjau:
-        return 'Dokumen dalam tahap peninjauan!';
+        return 'progress.sub_review'.tr();
       case ProgressStatus.diterima:
-        return 'Selamat, pendaftaran atas beasiswa ini telah diterima segera lakukan pendaftaran ulang!';
+        return 'progress.sub_accepted'.tr();
       case ProgressStatus.ditolak:
-        return 'Maaf, pendaftaran atas beasiswa ini telah ditolak karena tidak memenuhi syarat!';
+        return 'progress.sub_rejected'.tr();
     }
   }
 
@@ -71,11 +75,11 @@ enum ProgressFilter { semua, tersimpan, ditinjau, diterima, ditolak }
 extension ProgressFilterLabel on ProgressFilter {
   String get label {
     switch (this) {
-      case ProgressFilter.semua: return 'Semua';
-      case ProgressFilter.tersimpan: return 'Tersimpan';
-      case ProgressFilter.ditinjau: return 'Ditinjau';
-      case ProgressFilter.diterima: return 'Diterima';
-      case ProgressFilter.ditolak: return 'Ditolak';
+      case ProgressFilter.semua: return 'progress.filter_all'.tr();
+      case ProgressFilter.tersimpan: return 'progress.filter_saved'.tr();
+      case ProgressFilter.ditinjau: return 'progress.filter_under_review'.tr();
+      case ProgressFilter.diterima: return 'progress.filter_accepted'.tr();
+      case ProgressFilter.ditolak: return 'progress.filter_rejected'.tr();
     }
   }
 }

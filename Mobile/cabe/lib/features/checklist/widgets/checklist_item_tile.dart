@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:cabe/core/theme/app_colors.dart';
 import 'package:cabe/core/theme/app_text_styles.dart';
 import 'package:cabe/features/checklist/controllers/checklist_controller.dart';
+import 'package:cabe/core/constants/translation_helper.dart';
+import 'package:easy_localization/easy_localization.dart';
 
 class ChecklistItemTile extends StatelessWidget {
   final ChecklistItem item;
@@ -33,9 +35,8 @@ class ChecklistItemTile extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    item.title,
+                    TranslationHelper.translateDocument(item.title, context.locale.languageCode),
                     style: AppTextStyles.bodyMedium.copyWith(
-                      // ✅ Logika warna & weight dari model
                       color: item.titleColor,
                       fontWeight: item.titleWeight,
                     ),
@@ -43,7 +44,6 @@ class ChecklistItemTile extends StatelessWidget {
                   const SizedBox(height: 6),
                   Row(
                     children: [
-                      // ✅ Logika warna tag dari model ScholarshipTag
                       ...item.tags.map((tag) => _buildTag(tag)),
                       const Spacer(),
                       Text(
@@ -70,7 +70,6 @@ class ChecklistItemTile extends StatelessWidget {
       margin: const EdgeInsets.only(right: 4),
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
       decoration: BoxDecoration(
-        // Panggil tagColor() dari model, kirim konteks isChecked
         color: tag.tagColor(isItemChecked: item.isChecked),
         borderRadius: BorderRadius.circular(4),
       ),
@@ -106,4 +105,3 @@ class ChecklistItemTile extends StatelessWidget {
     );
   }
 }
-

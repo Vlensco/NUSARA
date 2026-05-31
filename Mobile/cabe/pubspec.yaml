@@ -46,6 +46,7 @@ dependencies:
   firebase_storage: ^12.4.5
   google_sign_in: ^6.2.2
   http: ^1.2.2
+  easy_localization: ^3.0.7
 
 dev_dependencies:
   flutter_test:
@@ -71,6 +72,7 @@ flutter:
   uses-material-design: true
 
   assets:
+    - assets/translations/
     - assets/logo/logo_cabe_0.png
     - assets/logo/logo_cabe_1.png
     - assets/onboarding/onboarding1.png
@@ -83,6 +85,7 @@ flutter:
     - assets/login/login1.png
     - assets/login/facebook.png
     - assets/login/google.png
+    - assets/beasiswa/
 
 flutter_icons:
   android: true

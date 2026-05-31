@@ -9,6 +9,7 @@ class Scholarship {
   final int matchPercentage;
   final int daysLeft;
   final bool isSaved;
+  final String logoPath;
   
   final String description;
   final List<String> requirements;
@@ -24,6 +25,7 @@ class Scholarship {
     required this.matchPercentage,
     required this.daysLeft,
     this.isSaved = false,
+    this.logoPath = '',
     this.description = 'Belum ada deskripsi untuk beasiswa ini.',
     this.requirements = const [],
     this.criteria = const {},
@@ -39,6 +41,7 @@ class Scholarship {
     int? matchPercentage,
     int? daysLeft,
     bool? isSaved,
+    String? logoPath,
     String? description,
     List<String>? requirements,
     Map<String, String>? criteria,
@@ -53,6 +56,7 @@ class Scholarship {
       matchPercentage: matchPercentage ?? this.matchPercentage,
       daysLeft: daysLeft ?? this.daysLeft,
       isSaved: isSaved ?? this.isSaved,
+      logoPath: logoPath ?? this.logoPath,
       description: description ?? this.description,
       requirements: requirements ?? this.requirements,
       criteria: criteria ?? this.criteria,

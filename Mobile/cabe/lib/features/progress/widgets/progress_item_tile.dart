@@ -4,6 +4,8 @@ import 'package:cabe/core/theme/app_colors.dart';
 import 'package:cabe/core/theme/app_text_styles.dart';
 import 'package:cabe/shared_widgets/app_button.dart';
 import 'package:cabe/features/progress/controllers/progress_controller.dart';
+import 'package:easy_localization/easy_localization.dart';
+import 'package:cabe/core/constants/translation_helper.dart';
 
 class ProgressItemTile extends ConsumerWidget {
   final ProgressItem item;
@@ -30,7 +32,10 @@ class ProgressItemTile extends ConsumerWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(item.title, style: AppTextStyles.labelLarge),
+                  Text(
+                    TranslationHelper.translateTitle(item.title, context.locale.languageCode),
+                    style: AppTextStyles.labelLarge,
+                  ),
                   const SizedBox(height: 4),
                   Text(
                     item.subtitle,
@@ -91,14 +96,14 @@ class ProgressItemTile extends ConsumerWidget {
       context: context,
       builder: (ctx) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Text('Ubah Status Beasiswa', style: AppTextStyles.h4),
+        title: Text('progress.dialog_title'.tr(), style: AppTextStyles.h4),
         content: Text(
-          'Pilih status beasiswa kamu apabila telah selesai melewati proses peninjauan!',
+          'progress.dialog_desc'.tr(),
           style: AppTextStyles.bodySmall,
         ),
         actions: [
           AppButton(
-            label: 'Ditolak',
+            label: 'progress.status_rejected'.tr(),
             variant: AppButtonVariant.secondary,
             onPressed: () {
               ref
@@ -108,7 +113,7 @@ class ProgressItemTile extends ConsumerWidget {
             },
           ),
           AppButton(
-            label: 'Diterima',
+            label: 'progress.status_accepted'.tr(),
             variant: AppButtonVariant.primary,
             onPressed: () {
               ref

@@ -61,7 +61,7 @@ class ScholarshipNotifier extends Notifier<List<Scholarship>> {
     }
   }
 
-  /// Ambil profil user dari Firebase lalu hitung match % via AI
+  /// Ambil profil user dari Firebase lalu hitung match % via Lightweight Matching
   Future<void> _loadAiMatchPercentages() async {
     final loadId = ++_activeLoadId;
     try {
@@ -77,63 +77,114 @@ class ScholarshipNotifier extends Notifier<List<Scholarship>> {
       if (loadId != _activeLoadId) return;
       final data = doc.data()!;
 
-      // Ambil data profil
+      // Ambil data profil user
       final rawNilai = data['nilai_rata_rata'];
       final nilaiRataRata = (rawNilai is num) ? rawNilai.toDouble() : 0.0;
+      final tipeNilai = (data['tipe_nilai'] as String?) ?? 'rapor';
       final kelas = (data['kelas'] as String?) ?? '';
       final jurusan = (data['jurusan'] as String?) ?? '';
+      final jenjangRaw = (data['jenjang'] as String?) ?? '';
 
-      // Ambil list prestasi
-      final rawPrestasi = data['prestasi'];
-      List<String> prestasi = [];
-      if (rawPrestasi is List) {
-        prestasi = rawPrestasi.map((e) => e.toString()).where((e) => e.isNotEmpty).toList();
-      } else if (rawPrestasi is String && rawPrestasi.isNotEmpty) {
-        prestasi = rawPrestasi.split(',').map((e) => e.trim()).where((e) => e.isNotEmpty).toList();
+      // Tentukan nilai rata-rata yang terstandarisasi untuk dicocokkan (skala 100)
+      double userIpkForMatching = nilaiRataRata;
+      if (tipeNilai == 'ipk') {
+        userIpkForMatching = (nilaiRataRata * 25.0).clamp(0.0, 100.0);
       }
 
-      // Ambil list minat
-      final rawMinat = data['minat_bakat'];
-      List<String> minat = [];
-      if (rawMinat is List) {
-        minat = rawMinat.map((e) => e.toString()).toList();
-      } else if (rawMinat is String && rawMinat.isNotEmpty) {
-        minat = rawMinat.split(',').map((e) => e.trim()).toList();
+      // Tentukan jenjang dari field Firestore atau fallback dari kelas
+      String userJenjang;
+      if (jenjangRaw.isNotEmpty) {
+        if (jenjangRaw.contains('SMA') || jenjangRaw.contains('SMK') || jenjangRaw.contains('MA')) {
+          userJenjang = 'SMA';
+        } else if (jenjangRaw.contains('D3')) {
+          userJenjang = 'D3';
+        } else if (jenjangRaw.contains('S2')) {
+          userJenjang = 'S2';
+        } else {
+          userJenjang = 'S1';
+        }
+      } else {
+        final kelasNum = int.tryParse(kelas.replaceAll(RegExp(r'[^0-9]'), ''));
+        if (kelasNum != null && kelasNum >= 10 && kelasNum <= 12) {
+          userJenjang = 'SMA';
+        } else if (kelasNum != null && kelasNum >= 1 && kelasNum <= 9) {
+          userJenjang = 'SMP';
+        } else {
+          userJenjang = 'S1';
+        }
       }
 
-      // 1. Tampilkan persentase rule-based/fallback secara INSTAN terlebih dahulu
-      state = state.map((scholarship) {
-        final fallbackPct = AiService.fallbackMatch(
-          nilaiRataRata: nilaiRataRata,
-          kelas: kelas,
-          jurusan: jurusan,
-          minatBakat: minat,
-          prestasi: prestasi,
-          scholarshipCriteria: scholarship.criteria,
+      // Estimasi usia dari kelas
+      int userUsia = 18;
+      final kelasNum = int.tryParse(kelas.replaceAll(RegExp(r'[^0-9]'), ''));
+      if (kelasNum != null) {
+        userUsia = kelasNum + 6; // Kelas 10 ≈ 16 tahun, 12 ≈ 18 tahun
+      }
+
+      // Helper: Parse criteria map ke format req_ fields
+      List<String> parseJenjang(Map<String, String> criteria) {
+        final k = criteria['Kelas'] ?? '';
+        if (k.isEmpty) return ['Semua Jenjang'];
+        // Jika ada kelas SMA (10-12), otomatis cocok untuk SMA
+        return ['SMA', 'SMK', 'S1'];
+      }
+
+      int parseBatasUsia(Map<String, String> criteria) {
+        return 25; // Default batas usia untuk semua beasiswa
+      }
+
+      List<String> parseBidangStudi(Map<String, String> criteria) {
+        final j = criteria['Jurusan'] ?? '';
+        if (j.isEmpty || j.contains('Semua')) return ['Semua Jurusan'];
+        return j.split(',').map((e) => e.trim()).toList();
+      }
+
+      double parseMinIpk(Map<String, String> criteria) {
+        final str = criteria['Min. Nilai Rapor'];
+        return str != null ? (double.tryParse(str) ?? 70.0) : 70.0;
+      }
+
+      // 1. Tampilkan persentase fallback secara INSTAN terlebih dahulu
+      final fallbackList = state.map((scholarship) {
+        final fallback = AiService.fallbackMatch(
+          userJenjang: userJenjang,
+          userUsia: userUsia,
+          userBidangStudi: jurusan.isNotEmpty ? jurusan : 'Umum',
+          userIpk: userIpkForMatching,
+          scholarshipTitle: scholarship.title,
+          reqJenjang: parseJenjang(scholarship.criteria),
+          reqBatasUsia: parseBatasUsia(scholarship.criteria),
+          reqBidangStudi: parseBidangStudi(scholarship.criteria),
+          reqMinIpk: parseMinIpk(scholarship.criteria),
         );
-        return scholarship.copyWith(matchPercentage: fallbackPct);
-      }).toList();
+        return scholarship.copyWith(matchPercentage: fallback.matchPercentage);
+      }).toList()
+        ..sort((a, b) => b.matchPercentage.compareTo(a.matchPercentage));
+      state = fallbackList;
 
       // 2. Jalankan request AI secara paralel dan update satu-per-satu setelah respon AI diterima
       final futures = state.map((scholarship) async {
-        final matchPct = await AiService.getMatchPercentage(
-          nilaiRataRata: nilaiRataRata,
-          kelas: kelas,
-          jurusan: jurusan,
-          minatBakat: minat,
-          prestasi: prestasi,
+        final matchResult = await AiService.getMatch(
+          userJenjang: userJenjang,
+          userUsia: userUsia,
+          userBidangStudi: jurusan.isNotEmpty ? jurusan : 'Umum',
+          userIpk: userIpkForMatching,
           scholarshipTitle: scholarship.title,
-          scholarshipCriteria: scholarship.criteria,
+          reqJenjang: parseJenjang(scholarship.criteria),
+          reqBatasUsia: parseBatasUsia(scholarship.criteria),
+          reqBidangStudi: parseBidangStudi(scholarship.criteria),
+          reqMinIpk: parseMinIpk(scholarship.criteria),
         );
 
         // Hanya update jika ini masih request aktif terbaru
         if (loadId == _activeLoadId) {
           state = state.map((s) {
             if (s.id == scholarship.id) {
-              return s.copyWith(matchPercentage: matchPct);
+              return s.copyWith(matchPercentage: matchResult.matchPercentage);
             }
             return s;
-          }).toList();
+          }).toList()
+            ..sort((a, b) => b.matchPercentage.compareTo(a.matchPercentage));
         }
       }).toList();
 
@@ -190,6 +241,7 @@ class ScholarshipNotifier extends Notifier<List<Scholarship>> {
       title: 'Beasiswa Unggulan Kemendikbud',
       provider: 'Kemendikbud RI',
       providerColor: const Color(0xFF00A47D),
+      logoPath: 'assets/beasiswa/KEMENDIKBUD.png',
       tags: ['Matematika', 'Pemerintah', 'Prestasi', 'Parsial'],
       matchPercentage: 0,
       daysLeft: 21,
@@ -203,7 +255,8 @@ class ScholarshipNotifier extends Notifier<List<Scholarship>> {
       ],
       criteria: {
         "Min. Nilai Rapor": "85",
-        "Kelas": "11, 12",
+        "Min. IPK": "3.40",
+        "Kelas": "11, 12 (Semester 3-6)",
         "Jurusan": "IPA, IPS, Bahasa"
       },
       documents: [
@@ -220,6 +273,7 @@ class ScholarshipNotifier extends Notifier<List<Scholarship>> {
       title: 'Beasiswa Atlet Berprestasi KONI',
       provider: 'KONI Pusat',
       providerColor: const Color(0xFFFE4820),
+      logoPath: 'assets/beasiswa/KONI.png',
       tags: ['Olahraga', 'Pemerintah', 'Khusus', 'Penuh'],
       matchPercentage: 0,
       daysLeft: 22,
@@ -233,7 +287,8 @@ class ScholarshipNotifier extends Notifier<List<Scholarship>> {
       ],
       criteria: {
         "Min. Nilai Rapor": "70",
-        "Kelas": "10, 11, 12",
+        "Min. IPK": "2.80",
+        "Kelas": "10, 11, 12 (Semester 1-6)",
         "Jurusan": "IPA, IPS, Bahasa, SMK"
       },
       documents: [
@@ -249,6 +304,7 @@ class ScholarshipNotifier extends Notifier<List<Scholarship>> {
       title: 'Beasiswa Seni Budaya Nusantara',
       provider: 'Kemendikbud RI',
       providerColor: const Color(0xFF68417E),
+      logoPath: 'assets/beasiswa/KEMENDIKBUD.png',
       tags: ['Seni & Desain', 'Pemerintah', 'Prestasi', 'Parsial'],
       matchPercentage: 0,
       daysLeft: 22,
@@ -262,7 +318,8 @@ class ScholarshipNotifier extends Notifier<List<Scholarship>> {
       ],
       criteria: {
         "Min. Nilai Rapor": "70",
-        "Kelas": "10, 11, 12",
+        "Min. IPK": "2.80",
+        "Kelas": "10, 11, 12 (Semester 1-6)",
         "Jurusan": "IPA, IPS, Bahasa, SMK"
       },
       documents: [
@@ -278,6 +335,7 @@ class ScholarshipNotifier extends Notifier<List<Scholarship>> {
       title: 'Paragon for Future Leaders',
       provider: 'PT Paragon Technology',
       providerColor: const Color(0xFFB7962A),
+      logoPath: 'assets/beasiswa/PARAGON.png',
       tags: ['Wirausahawan', 'Swasta', 'Khusus', 'Parsial'],
       matchPercentage: 0,
       daysLeft: 25,
@@ -291,7 +349,8 @@ class ScholarshipNotifier extends Notifier<List<Scholarship>> {
       ],
       criteria: {
         "Min. Nilai Rapor": "75",
-        "Kelas": "10, 11, 12",
+        "Min. IPK": "3.00",
+        "Kelas": "10, 11, 12 (Semester 1-6)",
         "Jurusan": "IPA, IPS, Bahasa, SMK"
       },
       documents: [
@@ -307,6 +366,7 @@ class ScholarshipNotifier extends Notifier<List<Scholarship>> {
       title: 'LPDP Beasiswa Reguler',
       provider: 'LPDP Kemenkeu',
       providerColor: const Color(0xFFE63333),
+      logoPath: 'assets/beasiswa/image.png',
       tags: ['Seni & Desain', 'Pemerintah', 'Prestasi', 'Parsial'],
       matchPercentage: 0,
       daysLeft: 27,
@@ -320,7 +380,8 @@ class ScholarshipNotifier extends Notifier<List<Scholarship>> {
       ],
       criteria: {
         "Min. Nilai Rapor": "80",
-        "Kelas": "12",
+        "Min. IPK": "3.20",
+        "Kelas": "12 (Semester 5-6)",
         "Jurusan": "IPA, IPS, Bahasa"
       },
       documents: [
@@ -337,6 +398,7 @@ class ScholarshipNotifier extends Notifier<List<Scholarship>> {
       title: 'Beasiswa Astra 1st',
       provider: 'Astra International',
       providerColor: const Color(0xFFA729B3),
+      logoPath: 'assets/beasiswa/ASTRA.png',
       tags: ['Matematika', 'Swasta', 'Kurang Mampu', 'Penuh'],
       matchPercentage: 0,
       daysLeft: 27,
@@ -344,13 +406,14 @@ class ScholarshipNotifier extends Notifier<List<Scholarship>> {
       description: "Program beasiswa dari PT Astra International Tbk untuk siswa SMK berprestasi yang tertarik di bidang otomotif, teknik, dan manufaktur. Termasuk kesempatan magang di perusahaan Astra.",
       requirements: [
         "Siswa SMK jurusan teknik / otomotif",
-        "Nilai rapor rata - rata minimal 8.0",
+        "Nilai rapor rata - rata minimal 80",
         "Tertarik di bidang otomotif dan teknologi",
         "Bersedia mengikuti program magang"
       ],
       criteria: {
         "Min. Nilai Rapor": "80",
-        "Kelas": "11, 12",
+        "Min. IPK": "3.20",
+        "Kelas": "11, 12 (Semester 3-6)",
         "Jurusan": "SMK"
       },
       documents: [
@@ -366,6 +429,7 @@ class ScholarshipNotifier extends Notifier<List<Scholarship>> {
       title: 'TELADAN - Tanoto Foundation',
       provider: 'Tanoto Foundation',
       providerColor: const Color(0xFF4AD743),
+      logoPath: 'assets/beasiswa/TANOTO.png',
       tags: ['Kesehatan', 'Kampus', 'Ikatan Dinas', 'Penuh'],
       matchPercentage: 0,
       daysLeft: 29,
@@ -379,7 +443,8 @@ class ScholarshipNotifier extends Notifier<List<Scholarship>> {
       ],
       criteria: {
         "Min. Nilai Rapor": "75",
-        "Kelas": "11, 12",
+        "Min. IPK": "3.00",
+        "Kelas": "11, 12 (Semester 3-6)",
         "Jurusan": "IPA, IPS, Bahasa"
       },
       documents: [

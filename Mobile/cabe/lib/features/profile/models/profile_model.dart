@@ -6,24 +6,25 @@ class ProfileModel {
   final int score;
   final double progress;
   final String status;
+  final String tips;
 
-  final int academicScore;
+  final double academicScore;
   final int academicMax;
   final double academicProgress;
 
-  final int financialScore;
+  final double financialScore;
   final int financialMax;
   final double financialProgress;
 
-  final int nonAcademicScore;
+  final double nonAcademicScore;
   final int nonAcademicMax;
   final double nonAcademicProgress;
 
-  final int certRecScore;
+  final double certRecScore;
   final int certRecMax;
   final double certRecProgress;
 
-  final int motivationScore;
+  final double motivationScore;
   final int motivationMax;
   final double motivationProgress;
 
@@ -43,6 +44,7 @@ class ProfileModel {
     required this.score,
     required this.progress,
     required this.status,
+    required this.tips,
     required this.academicScore,
     required this.academicMax,
     required this.academicProgress,

@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cabe/features/onboarding/screens/onboarding_screen.dart';
 import 'package:cabe/core/routing/main_navigation.dart';
 import 'package:cabe/core/theme/app_colors.dart';
 import 'package:cabe/core/services/ai_service.dart';
+import 'package:cabe/features/profile_setup/screens/profile_setup_screen.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -61,10 +63,42 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
       // Check apakah user sudah login
       final user = FirebaseAuth.instance.currentUser;
       if (user != null) {
-        // Sudah login → langsung ke Home
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (_) => const MainNavigation()),
-        );
+        // Cek apakah setup profil sudah selesai
+        bool setupCompleted = false;
+        try {
+          final doc = await FirebaseFirestore.instance
+              .collection('users')
+              .doc(user.uid)
+              .get();
+          final data = doc.data();
+          if (data != null) {
+            // Cek explicit flag, atau fallback: jika sudah ada nama_lengkap
+            // (untuk kompatibilitas user lama yang tidak punya field setup_completed)
+            final hasFlag = data['setup_completed'] == true;
+            final hasNama = (data['nama_lengkap'] as String? ?? '').isNotEmpty;
+            setupCompleted = hasFlag || (doc.exists && hasNama && !data.containsKey('setup_step'));
+          }
+        } catch (e) {
+          debugPrint('Gagal cek setup status: $e');
+          // Jika gagal fetch, amankan user ke home agar tidak terjebak
+          setupCompleted = true;
+        }
+
+        if (!mounted) return;
+
+        if (setupCompleted) {
+          // Setup sudah selesai → langsung ke Home
+          Navigator.of(context).pushReplacement(
+            MaterialPageRoute(builder: (_) => const MainNavigation()),
+          );
+        } else {
+          // Setup belum selesai → lanjutkan dari step terakhir
+          Navigator.of(context).pushReplacement(
+            MaterialPageRoute(
+              builder: (_) => const ProfileSetupScreen(resumeFromDraft: true),
+            ),
+          );
+        }
       } else {
         // Belum login → ke Onboarding/Login
         Navigator.of(context).pushReplacement(

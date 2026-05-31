@@ -5,24 +5,14 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'dart:io';
 import 'dart:typed_data';
+import 'package:cabe/core/services/ai_service.dart';
+import 'package:cabe/features/profile_setup/models/profile_setup_data.dart';
 
 /// Daftar opsi minat & bakat default.
 const List<String> defaultMinatBakatOptions = [
   "Olahraga", "Bahasa & Sastra", "Memasak & Baking", "Kewirausahaan",
   "Kesehatan", "Matematika", "Seni & Desain", "Sosial & Kemanusiaan",
   "Musik", "Hukum & Politik", "Sains & Teknologi", "Ekonomi & Bisnis",
-];
-
-const List<String> sumberPendanaanOptions = [
-  "Beasiswa Pemerintah", "Beasiswa Kampus", "Beasiswa Swasta / Coorporate",
-];
-
-const List<String> jenisSyaratOptions = [
-  "Beasiswa Prestasi", "Beasiswa Ikatan Dinas", "Beasiswa Kurang Mampu", "Beasiswa Khusus",
-];
-
-const List<String> cakupanBiayaOptions = [
-  "Beasiswa Penuh", "Beasiswa Parsial",
 ];
 
 class EditProfileController extends ChangeNotifier {
@@ -47,6 +37,22 @@ class EditProfileController extends ChangeNotifier {
   List<String> selectedSumberPendanaan = [];
   List<String> selectedJenisSyarat = [];
   List<String> selectedCakupanBiaya = [];
+
+  // ─── New: Finansial, Non-Akademik, Dokumen, Motivasi ───
+  String penghasilanOrtu = '';
+  String bantuanSosial = '';
+  String tanggungan = '';
+  String pekerjaanOrtu = '';
+  String levelPrestasi = '';
+  String jumlahPrestasi = '';
+  String organisasi = '';
+  String aktivitasTambahan = '';
+  List<String> dokumenPendukung = [];
+  String kejelasanTujuan = '';
+  String tujuanKarir = '';
+  String keterkaitan = '';
+  String tipeNilai = 'rapor';
+  String jenjang = '';
 
   // ── Initialization ──
   void loadFromProfile(Map<String, dynamic>? dbProfile) {
@@ -73,6 +79,24 @@ class EditProfileController extends ChangeNotifier {
       selectedCakupanBiaya = List<String>.from(dbProfile['cakupan_biaya']);
     }
 
+    // Load new fields
+    tipeNilai = dbProfile['tipe_nilai'] ?? 'rapor';
+    jenjang = dbProfile['jenjang'] ?? '';
+    penghasilanOrtu = dbProfile['penghasilan_ortu'] ?? '';
+    bantuanSosial = dbProfile['bantuan_sosial'] ?? '';
+    tanggungan = dbProfile['tanggungan'] ?? '';
+    pekerjaanOrtu = dbProfile['pekerjaan_ortu'] ?? '';
+    levelPrestasi = dbProfile['level_prestasi'] ?? '';
+    jumlahPrestasi = dbProfile['jumlah_prestasi'] ?? '';
+    organisasi = dbProfile['organisasi'] ?? '';
+    aktivitasTambahan = dbProfile['aktivitas_tambahan'] ?? '';
+    if (dbProfile['dokumen_pendukung'] is List) {
+      dokumenPendukung = List<String>.from(dbProfile['dokumen_pendukung']);
+    }
+    kejelasanTujuan = dbProfile['kejelasan_tujuan'] ?? '';
+    tujuanKarir = dbProfile['tujuan_karir'] ?? '';
+    keterkaitan = dbProfile['keterkaitan'] ?? '';
+
     notifyListeners();
   }
 
@@ -86,7 +110,7 @@ class EditProfileController extends ChangeNotifier {
 
   // ── Navigation ──
   void nextPage() {
-    if (currentPage < 3) {
+    if (currentPage < 6) {
       pageController.nextPage(
         duration: const Duration(milliseconds: 300),
         curve: Curves.easeInOut,
@@ -151,6 +175,40 @@ class EditProfileController extends ChangeNotifier {
     }
     notifyListeners();
   }
+
+  // ─── Setters untuk field baru ───
+  void setTipeNilai(String val) {
+    tipeNilai = val;
+    notifyListeners();
+  }
+
+  void setJenjang(String val) {
+    jenjang = val;
+    // Reset kelas when jenjang changes
+    kelasController.clear();
+    notifyListeners();
+  }
+
+  bool get isSekolahMenengah => jenjang == 'SMA/SMK/MA';
+  void setPenghasilanOrtu(String v) { penghasilanOrtu = v; notifyListeners(); }
+  void setBantuanSosial(String v) { bantuanSosial = v; notifyListeners(); }
+  void setTanggungan(String v) { tanggungan = v; notifyListeners(); }
+  void setPekerjaanOrtu(String v) { pekerjaanOrtu = v; notifyListeners(); }
+  void setLevelPrestasi(String v) { levelPrestasi = v; notifyListeners(); }
+  void setJumlahPrestasi(String v) { jumlahPrestasi = v; notifyListeners(); }
+  void setOrganisasi(String v) { organisasi = v; notifyListeners(); }
+  void setAktivitasTambahan(String v) { aktivitasTambahan = v; notifyListeners(); }
+  void toggleDokumenPendukung(String item) {
+    if (dokumenPendukung.contains(item)) {
+      dokumenPendukung.remove(item);
+    } else {
+      dokumenPendukung.add(item);
+    }
+    notifyListeners();
+  }
+  void setKejelasanTujuan(String v) { kejelasanTujuan = v; notifyListeners(); }
+  void setTujuanKarir(String v) { tujuanKarir = v; notifyListeners(); }
+  void setKeterkaitan(String v) { keterkaitan = v; notifyListeners(); }
 
   // ── Minat Search Filter ──
   List<String> get filteredMinatOptions {
@@ -220,6 +278,19 @@ class EditProfileController extends ChangeNotifier {
 
   void removeNewFile(PlatformFile file) {
     newFiles.remove(file);
+    renamedFiles.remove(file.name);
+    notifyListeners();
+  }
+
+  Map<String, String> renamedFiles = {};
+
+  void renameNewFile(PlatformFile file, String newName) {
+    String finalName = newName.trim();
+    final ext = file.extension;
+    if (ext != null && ext.isNotEmpty && !finalName.toLowerCase().endsWith('.${ext.toLowerCase()}')) {
+      finalName = '$finalName.$ext';
+    }
+    renamedFiles[file.name] = finalName;
     notifyListeners();
   }
 
@@ -235,7 +306,8 @@ class EditProfileController extends ChangeNotifier {
       // Upload file baru ke Firebase Storage
       List<String> uploadedFileNames = [];
       for (final platformFile in newFiles) {
-        final filePath = 'prestasi/${user.uid}/${platformFile.name}';
+        final displayName = renamedFiles[platformFile.name] ?? platformFile.name;
+        final filePath = 'prestasi/${user.uid}/$displayName';
         try {
           final ref = FirebaseStorage.instance.ref().child(filePath);
           final Uint8List fileBytes;
@@ -244,15 +316,15 @@ class EditProfileController extends ChangeNotifier {
           } else if (platformFile.path != null) {
             fileBytes = await File(platformFile.path!).readAsBytes();
           } else {
-            return 'File ${platformFile.name} tidak memiliki data atau path yang valid';
+            return 'File $displayName tidak memiliki data atau path yang valid';
           }
           await ref.putData(fileBytes);
-          uploadedFileNames.add(platformFile.name);
+          uploadedFileNames.add(displayName);
         } catch (uploadError) {
-          debugPrint('Upload error for ${platformFile.name}: $uploadError');
+          debugPrint('Upload error for $displayName: $uploadError');
           // Jika gagal upload ke Storage (misal karena bucket belum dibuat atau rules error),
           // kita tetap simpan nama file ke Firestore agar pengguna tidak stuck.
-          uploadedFileNames.add(platformFile.name);
+          uploadedFileNames.add(displayName);
         }
       }
 
@@ -265,15 +337,32 @@ class EditProfileController extends ChangeNotifier {
         'nama_lengkap': namaController.text,
         'tanggal_lahir': tglLahirController.text,
         'jenis_kelamin': jenisKelaminController.text,
+        'jenjang': jenjang,
         'nama_sekolah': sekolahController.text,
         'kelas': kelasController.text,
         'jurusan': jurusanController.text,
+        'tipe_nilai': tipeNilai,
         'nilai_rata_rata': double.tryParse(nilaiRaporController.text) ?? 0.0,
         'prestasi': combinedPrestasi,
         'minat_bakat': selectedMinatBakat,
         'sumber_pendanaan': selectedSumberPendanaan,
         'jenis_beasiswa': selectedJenisSyarat,
         'cakupan_biaya': selectedCakupanBiaya,
+        // Finansial
+        'penghasilan_ortu': penghasilanOrtu,
+        'bantuan_sosial': bantuanSosial,
+        'tanggungan': tanggungan,
+        'pekerjaan_ortu': pekerjaanOrtu,
+        // Non-Akademik
+        'level_prestasi': levelPrestasi,
+        'jumlah_prestasi': jumlahPrestasi,
+        'organisasi': organisasi,
+        'aktivitas_tambahan': aktivitasTambahan,
+        // Dokumen & Motivasi
+        'dokumen_pendukung': dokumenPendukung,
+        'kejelasan_tujuan': kejelasanTujuan,
+        'tujuan_karir': tujuanKarir,
+        'keterkaitan': keterkaitan,
         'updated_at': FieldValue.serverTimestamp(),
       };
 
@@ -282,12 +371,55 @@ class EditProfileController extends ChangeNotifier {
           .doc(user.uid)
           .set(updates, SetOptions(merge: true));
 
+      // ─── Recalculate readiness score in background ───
+      _recalculateReadiness(user.uid);
+
       return null; // success
     } catch (e) {
       return 'Gagal menyimpan profil: $e';
     } finally {
       isLoading = false;
       notifyListeners();
+    }
+  }
+
+  /// Fire-and-forget: recalculate readiness score after profile edit
+  void _recalculateReadiness(String uid) async {
+    try {
+      final nilai = double.tryParse(nilaiRaporController.text) ?? 0;
+
+      final result = await AiService.getReadinessScore(
+        nilaiRapor: nilai,
+        tipeNilai: tipeNilai,
+        penghasilanOrtu: penghasilanOrtu.isNotEmpty ? penghasilanOrtu : '> 5 Juta',
+        bantuanSosial: bantuanSosial.isNotEmpty ? bantuanSosial : 'Tidak ada',
+        tanggungan: tanggungan.isNotEmpty ? tanggungan : 'Tidak ada',
+        pekerjaanOrtu: pekerjaanOrtu.isNotEmpty ? pekerjaanOrtu : 'Tetap',
+        levelPrestasi: levelPrestasi.isNotEmpty ? levelPrestasi : 'Tidak ada',
+        jumlahPrestasi: jumlahPrestasi.isNotEmpty ? jumlahPrestasi : 'Tidak Ada',
+        organisasi: organisasi.isNotEmpty ? organisasi : 'Tidak ada',
+        aktivitasTambahan: aktivitasTambahan.isNotEmpty ? aktivitasTambahan : 'Tidak ada',
+        dokumenPendukung: dokumenPendukung,
+        kejelasanTujuan: kejelasanTujuan.isNotEmpty ? kejelasanTujuan : 'Belum yakin',
+        tujuanKarir: tujuanKarir.isNotEmpty ? tujuanKarir : 'Belum ada',
+        keterkaitan: keterkaitan.isNotEmpty ? keterkaitan : 'Belum sesuai / belum tahu',
+      );
+
+      await FirebaseFirestore.instance.collection('users').doc(uid).set({
+        'readiness_total': result.totalScore,
+        'readiness_akademik': result.skorAkademik,
+        'readiness_finansial': result.skorFinansial,
+        'readiness_non_akademik': result.skorNonAkademik,
+        'readiness_sertifikat': result.skorSertifikat,
+        'readiness_motivasi': result.skorMotivasi,
+        'readiness_label': result.label,
+        'readiness_tips': result.tips,
+        'readiness_updated_at': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
+
+      debugPrint('Readiness recalculated after edit: ${result.totalScore}');
+    } catch (e) {
+      debugPrint('Readiness recalculation failed (non-blocking): $e');
     }
   }
 
