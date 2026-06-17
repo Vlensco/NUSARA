@@ -63,6 +63,8 @@ class RegisterController extends ChangeNotifier {
         await FirebaseFirestore.instance.collection('users').doc(user.uid).set({
           'nama_lengkap': name,
           'email': email,
+          'setup_completed': false,  // Tandai belum setup profil
+          'setup_step': 0,
           'created_at': FieldValue.serverTimestamp(),
           'updated_at': FieldValue.serverTimestamp(),
         });

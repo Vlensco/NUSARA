@@ -244,7 +244,7 @@ class ScholarshipNotifier extends Notifier<List<Scholarship>> {
       logoPath: 'assets/beasiswa/KEMENDIKBUD.png',
       tags: ['Matematika', 'Pemerintah', 'Prestasi', 'Parsial'],
       matchPercentage: 0,
-      daysLeft: 21,
+      deadline: DateTime(2026, 6, 30),
       isSaved: false,
       description: "Beasiswa Unggulan merupakan program beasiswa yang diselenggarakan oleh Kementerian Pendidikan dan Kebudayaan RI untuk siswa berprestasi. Program ini mencakup biaya pendidikan, biaya hidup, dan tunjangan buku selama masa studi.",
       requirements: [
@@ -276,7 +276,7 @@ class ScholarshipNotifier extends Notifier<List<Scholarship>> {
       logoPath: 'assets/beasiswa/KONI.png',
       tags: ['Olahraga', 'Pemerintah', 'Khusus', 'Penuh'],
       matchPercentage: 0,
-      daysLeft: 22,
+      deadline: DateTime(2026, 7, 1),
       isSaved: false,
       description: "Program beasiswa khusus untuk atlet pelajar berprestasi yang telah mewakili daerah atau nasional dalam kompetisi olahraga resmi. Mencakup biaya pendidikan dan pelatihan.",
       requirements: [
@@ -307,7 +307,7 @@ class ScholarshipNotifier extends Notifier<List<Scholarship>> {
       logoPath: 'assets/beasiswa/KEMENDIKBUD.png',
       tags: ['Seni & Desain', 'Pemerintah', 'Prestasi', 'Parsial'],
       matchPercentage: 0,
-      daysLeft: 22,
+      deadline: DateTime(2026, 7, 1),
       isSaved: false,
       description: "Beasiswa untuk siswa yang memiliki bakat dan prestasi di bidang seni dan budaya Indonesia. Mendukung pelestarian dan pengembangan seni budaya nusantara melalui pendidikan.",
       requirements: [
@@ -338,7 +338,7 @@ class ScholarshipNotifier extends Notifier<List<Scholarship>> {
       logoPath: 'assets/beasiswa/PARAGON.png',
       tags: ['Wirausahawan', 'Swasta', 'Khusus', 'Parsial'],
       matchPercentage: 0,
-      daysLeft: 25,
+      deadline: DateTime(2026, 7, 4),
       isSaved: false,
       description: "Beasiswa dari Paragon Technology and Innovation untuk siswa SMA/SMK yang memiliki semangat inovasi dan entrepreneurship. Program ini juga mencakup pelatihan kewirausahaan dan mentoring.",
       requirements: [
@@ -369,7 +369,7 @@ class ScholarshipNotifier extends Notifier<List<Scholarship>> {
       logoPath: 'assets/beasiswa/image.png',
       tags: ['Seni & Desain', 'Pemerintah', 'Prestasi', 'Parsial'],
       matchPercentage: 0,
-      daysLeft: 27,
+      deadline: DateTime(2026, 7, 6),
       isSaved: false,
       description: "Lembaga Pengelola Dana Pendidikan (LPDP) menawarkan beasiswa reguler bagi putra - putri terbaik bangsa untuk melanjutkan pendidikan ke jenjang yang lebih tinggi di universitas terkemuka.",
       requirements: [
@@ -401,7 +401,7 @@ class ScholarshipNotifier extends Notifier<List<Scholarship>> {
       logoPath: 'assets/beasiswa/ASTRA.png',
       tags: ['Matematika', 'Swasta', 'Kurang Mampu', 'Penuh'],
       matchPercentage: 0,
-      daysLeft: 27,
+      deadline: DateTime(2026, 7, 6),
       isSaved: false,
       description: "Program beasiswa dari PT Astra International Tbk untuk siswa SMK berprestasi yang tertarik di bidang otomotif, teknik, dan manufaktur. Termasuk kesempatan magang di perusahaan Astra.",
       requirements: [
@@ -432,7 +432,7 @@ class ScholarshipNotifier extends Notifier<List<Scholarship>> {
       logoPath: 'assets/beasiswa/TANOTO.png',
       tags: ['Kesehatan', 'Kampus', 'Ikatan Dinas', 'Penuh'],
       matchPercentage: 0,
-      daysLeft: 29,
+      deadline: DateTime(2026, 7, 8),
       isSaved: false,
       description: "Program TELADAN (Transformasi Edukasi untuk Melahirkan Pemimpin Masa Depan) dari Tanoto Foundation memberikan dukungan finansial dan pengembangan kepemimpinan bagi siswa berprestasi.",
       requirements: [

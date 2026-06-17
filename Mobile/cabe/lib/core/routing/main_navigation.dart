@@ -7,6 +7,7 @@ import 'package:cabe/features/checklist/screens/checklist_screen.dart';
 import 'package:cabe/features/progress/screens/progress_screen.dart';
 import 'package:cabe/features/notifikasi/screens/notifikasi_screen.dart';
 import 'package:cabe/features/profile/screens/profile_screen.dart';
+import 'package:cabe/features/notifikasi/controllers/notifikasi_controller.dart';
 
 class BottomNavIndexNotifier extends Notifier<int> {
   @override
@@ -27,6 +28,7 @@ class MainNavigation extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final currentIndex = ref.watch(bottomNavIndexProvider);
+    final unreadCount = ref.watch(notifikasiProvider).where((n) => !n.isRead).length;
 
     return Scaffold(
       body: _buildBody(currentIndex),
@@ -36,7 +38,7 @@ class MainNavigation extends ConsumerWidget {
           color: AppColors.white,
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.05),
+              color: Colors.black.withValues(alpha: 0.05),
               blurRadius: 10,
               offset: const Offset(0, -5),
             ),
@@ -52,22 +54,22 @@ class MainNavigation extends ConsumerWidget {
           selectedLabelStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 12),
           unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.w500, fontSize: 12),
           elevation: 0,
-          items: const [
-            BottomNavigationBarItem(
+          items: [
+            const BottomNavigationBarItem(
               icon: Padding(
                 padding: EdgeInsets.only(bottom: 4.0),
                 child: Icon(LucideIcons.home),
               ),
               label: 'Beranda',
             ),
-            BottomNavigationBarItem(
+            const BottomNavigationBarItem(
               icon: Padding(
                 padding: EdgeInsets.only(bottom: 4.0),
                 child: Icon(LucideIcons.fileText),
               ),
               label: 'Checklist',
             ),
-            BottomNavigationBarItem(
+            const BottomNavigationBarItem(
               icon: Padding(
                 padding: EdgeInsets.only(bottom: 4.0),
                 child: Icon(LucideIcons.clipboardCheck),
@@ -76,12 +78,16 @@ class MainNavigation extends ConsumerWidget {
             ),
             BottomNavigationBarItem(
               icon: Padding(
-                padding: EdgeInsets.only(bottom: 4.0),
-                child: Icon(LucideIcons.bell),
+                padding: const EdgeInsets.only(bottom: 4.0),
+                child: Badge(
+                  isLabelVisible: unreadCount > 0,
+                  label: Text('$unreadCount'),
+                  child: const Icon(LucideIcons.bell),
+                ),
               ),
               label: 'Notifikasi',
             ),
-            BottomNavigationBarItem(
+            const BottomNavigationBarItem(
               icon: Padding(
                 padding: EdgeInsets.only(bottom: 4.0),
                 child: Icon(LucideIcons.user),

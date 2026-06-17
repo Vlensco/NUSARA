@@ -7,9 +7,9 @@ class Scholarship {
   final Color providerColor;
   final List<String> tags;
   final int matchPercentage;
-  final int daysLeft;
   final bool isSaved;
   final String logoPath;
+  final DateTime deadline;
   
   final String description;
   final List<String> requirements;
@@ -23,7 +23,7 @@ class Scholarship {
     required this.providerColor,
     required this.tags,
     required this.matchPercentage,
-    required this.daysLeft,
+    required this.deadline,
     this.isSaved = false,
     this.logoPath = '',
     this.description = 'Belum ada deskripsi untuk beasiswa ini.',
@@ -32,6 +32,22 @@ class Scholarship {
     this.documents = const [],
   });
 
+  /// Hitung sisa hari dari sekarang ke deadline
+  int get daysLeft {
+    final now = DateTime.now();
+    final diff = deadline.difference(DateTime(now.year, now.month, now.day)).inDays;
+    return diff < 0 ? 0 : diff;
+  }
+
+  /// Format tanggal deadline (misal: "1 Juli 2026")
+  String get deadlineFormatted {
+    const months = [
+      '', 'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
+      'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember',
+    ];
+    return '${deadline.day} ${months[deadline.month]} ${deadline.year}';
+  }
+
   Scholarship copyWith({
     String? id,
     String? title,
@@ -39,7 +55,7 @@ class Scholarship {
     Color? providerColor,
     List<String>? tags,
     int? matchPercentage,
-    int? daysLeft,
+    DateTime? deadline,
     bool? isSaved,
     String? logoPath,
     String? description,
@@ -54,7 +70,7 @@ class Scholarship {
       providerColor: providerColor ?? this.providerColor,
       tags: tags ?? this.tags,
       matchPercentage: matchPercentage ?? this.matchPercentage,
-      daysLeft: daysLeft ?? this.daysLeft,
+      deadline: deadline ?? this.deadline,
       isSaved: isSaved ?? this.isSaved,
       logoPath: logoPath ?? this.logoPath,
       description: description ?? this.description,

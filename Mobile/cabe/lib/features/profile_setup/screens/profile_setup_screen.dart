@@ -29,9 +29,9 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
   }
 
   Future<void> _initController() async {
-    if (widget.resumeFromDraft) {
-      await _controller.loadDraftFromFirestore();
-    }
+    // Selalu muat data Firestore: baik saat resume draft maupun register baru
+    // (agar nama dari register muncul di step 1 tanpa harus diketik ulang)
+    await _controller.loadDraftFromFirestore();
     if (mounted) {
       setState(() => _isLoading = false);
     }

@@ -5,6 +5,7 @@ import 'package:cabe/core/theme/app_text_styles.dart';
 import 'package:cabe/features/notifikasi/widgets/notifikasi_card.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cabe/features/notifikasi/controllers/notifikasi_controller.dart';
+import 'package:cabe/features/notifikasi/models/notifikasi_model.dart';
 import 'package:easy_localization/easy_localization.dart';
 
 class NotifikasiScreen extends ConsumerWidget {
@@ -88,11 +89,23 @@ class NotifikasiScreen extends ConsumerWidget {
       );
     }
 
-    // Kondisi 2 & 3: unread atau semua sudah dibaca
-    // Pisahkan berdasarkan waktu, unread di atas
-    final terbaru = notifications.where((n) => n.time.contains('Baru saja') || n.time.contains('Just now')).toList()
+    // Pisahkan notifikasi berdasarkan tipe
+    final deadlineNotifs = notifications
+        .where((n) => n.type == NotifikasiType.deadline)
+        .toList()
+      ..sort((a, b) => (a.daysLeft ?? 999).compareTo(b.daysLeft ?? 999));
+
+    final progressNotifs = notifications
+        .where((n) => n.type != NotifikasiType.deadline)
+        .toList();
+
+    final terbaru = progressNotifs
+        .where((n) => n.time.contains('Baru saja') || n.time.contains('Just now'))
+        .toList()
       ..sort((a, b) => a.isRead == b.isRead ? 0 : (a.isRead ? 1 : -1));
-    final sebelumnya = notifications.where((n) => !n.time.contains('Baru saja') && !n.time.contains('Just now')).toList()
+    final sebelumnya = progressNotifs
+        .where((n) => !n.time.contains('Baru saja') && !n.time.contains('Just now'))
+        .toList()
       ..sort((a, b) => a.isRead == b.isRead ? 0 : (a.isRead ? 1 : -1));
 
     return Scaffold(
@@ -155,8 +168,49 @@ class NotifikasiScreen extends ConsumerWidget {
               ),
               const SizedBox(height: 24),
 
+              // Section: DEADLINE BEASISWA
+              if (deadlineNotifs.isNotEmpty) ...[
+                Row(
+                  children: [
+                    const Icon(LucideIcons.calendarClock, size: 16, color: AppColors.blue600),
+                    const SizedBox(width: 6),
+                    Text(
+                      'DEADLINE BEASISWA',
+                      style: AppTextStyles.labelLarge.copyWith(
+                        color: AppColors.blue600,
+                        letterSpacing: 1.0,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: AppColors.blue100,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Text(
+                        '${deadlineNotifs.length}',
+                        style: AppTextStyles.bodySmall.copyWith(
+                          color: AppColors.blue600,
+                          fontWeight: FontWeight.w700,
+                          fontSize: 11,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                ...deadlineNotifs.asMap().entries.map(
+                  (entry) => _buildNotifItem(context, ref, entry.value,
+                      isLast: entry.key == deadlineNotifs.length - 1 &&
+                          terbaru.isEmpty &&
+                          sebelumnya.isEmpty),
+                ),
+              ],
+
               // Section: TERBARU
               if (terbaru.isNotEmpty) ...[
+                SizedBox(height: deadlineNotifs.isNotEmpty ? 24 : 0),
                 Text(
                   'notification.sec_recent'.tr(),
                   style: AppTextStyles.labelLarge.copyWith(
@@ -173,7 +227,7 @@ class NotifikasiScreen extends ConsumerWidget {
 
               // Section: SEBELUMNYA
               if (sebelumnya.isNotEmpty) ...[
-                SizedBox(height: terbaru.isNotEmpty ? 24 : 0),
+                SizedBox(height: (terbaru.isNotEmpty || deadlineNotifs.isNotEmpty) ? 24 : 0),
                 Text(
                   'notification.sec_previous'.tr(),
                   style: AppTextStyles.labelLarge.copyWith(

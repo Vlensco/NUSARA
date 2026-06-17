@@ -34,6 +34,11 @@ class ProfileSetupController extends ChangeNotifier {
       sekolahController.text = data['nama_sekolah'] as String? ?? '';
       profileData.jenjang = data['jenjang'] as String? ?? '';
 
+      profileData.namaLengkap = namaController.text;
+      profileData.tanggalLahir = tanggalLahirController.text;
+      profileData.jenisKelamin = jenisKelaminController.text;
+      profileData.namaSekolah = sekolahController.text;
+
       // Step 2 — Akademik
       kelasController.text = data['kelas'] as String? ?? '';
       jurusanController.text = data['jurusan'] as String? ?? '';
@@ -42,6 +47,10 @@ class ProfileSetupController extends ChangeNotifier {
       if (nilaiRaw != null) {
         nilaiController.text = nilaiRaw.toString();
       }
+
+      profileData.kelas = kelasController.text;
+      profileData.jurusan = jurusanController.text;
+      profileData.nilaiRataRata = nilaiController.text;
 
       // Step 3 — Finansial
       profileData.penghasilanOrtu = data['penghasilan_ortu'] as String? ?? '';
@@ -463,6 +472,15 @@ class ProfileSetupController extends ChangeNotifier {
 
   // ─── Finish & Save ke Firebase ───
   Future<void> finishSetup(BuildContext context) async {
+    // Sinkronisasi data dari text controller untuk memastikan data lengkap dan tidak kosong
+    profileData.namaLengkap = namaController.text;
+    profileData.tanggalLahir = tanggalLahirController.text;
+    profileData.jenisKelamin = jenisKelaminController.text;
+    profileData.namaSekolah = sekolahController.text;
+    profileData.kelas = kelasController.text;
+    profileData.jurusan = jurusanController.text;
+    profileData.nilaiRataRata = nilaiController.text;
+
     _saveCurrentStep();
 
     final user = FirebaseAuth.instance.currentUser;

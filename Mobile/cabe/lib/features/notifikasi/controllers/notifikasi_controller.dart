@@ -4,6 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cabe/features/notifikasi/models/notifikasi_model.dart';
 import 'package:cabe/features/progress/controllers/progress_controller.dart';
+import 'package:cabe/features/scholarships/providers/scholarship_provider.dart';
 import 'package:easy_localization/easy_localization.dart';
 
 class NotifikasiNotifier extends Notifier<List<NotifikasiModel>> {
@@ -12,6 +13,7 @@ class NotifikasiNotifier extends Notifier<List<NotifikasiModel>> {
   bool _hasRemovedAny = false;
   final List<NotifikasiModel> _history = [];
   bool _dbLoaded = false;
+  bool _deadlinesGenerated = false;
   final Set<String> _existingContentKeys = {};
 
   @override
@@ -19,6 +21,11 @@ class NotifikasiNotifier extends Notifier<List<NotifikasiModel>> {
     // Load dari database pertama kali
     if (!_dbLoaded) {
       _loadFromDb();
+    }
+
+    // Generate notifikasi deadline dari data beasiswa
+    if (!_deadlinesGenerated) {
+      _generateDeadlineNotifications();
     }
 
     // Listen perubahan progress — HANYA generate notifikasi untuk status BARU
@@ -34,6 +41,72 @@ class NotifikasiNotifier extends Notifier<List<NotifikasiModel>> {
     );
 
     return _history.where((n) => !_removedIds.contains(n.id)).toList();
+  }
+
+  /// Generate notifikasi deadline dari semua beasiswa yang masih buka
+  void _generateDeadlineNotifications() {
+    _deadlinesGenerated = true;
+
+    final scholarships = ref.read(scholarshipProvider);
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+
+    for (final s in scholarships) {
+      final daysLeft = s.deadline.difference(today).inDays;
+
+      // Hanya tampilkan deadline yang <= 30 hari dan belum lewat
+      if (daysLeft < 0 || daysLeft > 30) continue;
+
+      final contentKey = 'deadline_${s.id}';
+      if (_existingContentKeys.contains(contentKey)) continue;
+
+      // Tentukan pesan berdasarkan urgensi
+      String message;
+      if (daysLeft <= 3) {
+        message = 'Segera daftar! Pendaftaran ${s.title} ditutup dalam $daysLeft hari lagi (${s.deadlineFormatted}).';
+      } else if (daysLeft <= 7) {
+        message = 'Jangan sampai terlewat! Deadline ${s.title} tinggal $daysLeft hari lagi (${s.deadlineFormatted}).';
+      } else if (daysLeft <= 14) {
+        message = 'Persiapkan dokumenmu! Deadline ${s.title} pada ${s.deadlineFormatted} ($daysLeft hari lagi).';
+      } else {
+        message = 'Pendaftaran ${s.title} ditutup pada ${s.deadlineFormatted} ($daysLeft hari lagi). Siapkan berkas dari sekarang!';
+      }
+
+      // Time label berdasarkan urgensi
+      String timeLabel;
+      if (daysLeft <= 3) {
+        timeLabel = 'Mendesak';
+      } else if (daysLeft <= 7) {
+        timeLabel = 'Minggu ini';
+      } else {
+        timeLabel = 'Deadline ${s.deadlineFormatted}';
+      }
+
+      final notif = NotifikasiModel(
+        id: contentKey,
+        title: s.title,
+        message: message,
+        time: timeLabel,
+        isRead: false,
+        type: NotifikasiType.deadline,
+        daysLeft: daysLeft,
+      );
+
+      _history.add(notif);
+      _existingContentKeys.add(contentKey);
+    }
+
+    // Sort: deadline yang paling dekat di atas
+    _history.sort((a, b) {
+      // Deadline notifikasi paling urgent di atas
+      if (a.type == NotifikasiType.deadline && b.type == NotifikasiType.deadline) {
+        return (a.daysLeft ?? 999).compareTo(b.daysLeft ?? 999);
+      }
+      // Non-deadline (progress notif) tetap di atas deadline
+      if (a.type != NotifikasiType.deadline && b.type == NotifikasiType.deadline) return -1;
+      if (a.type == NotifikasiType.deadline && b.type != NotifikasiType.deadline) return 1;
+      return 0;
+    });
   }
 
   /// Handle HANYA perubahan status yang benar-benar baru
@@ -174,6 +247,9 @@ class NotifikasiNotifier extends Notifier<List<NotifikasiModel>> {
   NotifikasiType _parseType(String message) {
     if (message.contains('diterima')) return NotifikasiType.diterima;
     if (message.contains('menolak')) return NotifikasiType.ditolak;
+    if (message.contains('ditutup') || message.contains('Deadline') || message.contains('deadline')) {
+      return NotifikasiType.deadline;
+    }
     return NotifikasiType.ditinjau;
   }
 

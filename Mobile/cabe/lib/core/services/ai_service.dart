@@ -1,5 +1,5 @@
 import 'dart:convert';
-import 'package:flutter/foundation.dart';
+import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:http/http.dart' as http;
 
 class AiMatchResult {
@@ -10,29 +10,20 @@ class AiMatchResult {
 }
 
 class AiService {
-  // Android emulator -> 10.0.2.2, iOS simulator/real device/Mac/Web -> localhost
-  static String get _baseUrl {
-    if (kIsWeb) {
-      return 'http://localhost:8000';
-    }
-    if (defaultTargetPlatform == TargetPlatform.android) {
-      return 'http://10.0.2.2:8000';
-    }
-    return 'http://localhost:8000';
-  }
+  // URL AI backend yang sudah di-deploy di HuggingFace Spaces
+  static const String _baseUrl = 'https://andika121-cabe-api.hf.space';
 
-  /// Mengecek apakah server AI sedang aktif (memanggil endpoint / dan /health)
+  /// Mengecek apakah server AI sedang aktif
   static Future<bool> checkServerHealth() async {
     try {
-      // 1. Memanggil endpoint Root (/)
-      final rootResponse = await http.get(Uri.parse('$_baseUrl/')).timeout(const Duration(seconds: 5));
-      
-      // 2. Memanggil endpoint Health (/health)
-      final healthResponse = await http.get(Uri.parse('$_baseUrl/health')).timeout(const Duration(seconds: 5));
-      
-      if (rootResponse.statusCode == 200 && healthResponse.statusCode == 200) {
-        debugPrint('AI Server is ONLINE: ${rootResponse.body}');
-        return true;
+      final rootResponse = await http
+          .get(Uri.parse('$_baseUrl/'))
+          .timeout(const Duration(seconds: 15));
+
+      if (rootResponse.statusCode == 200) {
+        final data = jsonDecode(rootResponse.body);
+        debugPrint('AI Server is ONLINE: $data');
+        return data['status'] == 'ok';
       }
       return false;
     } catch (e) {
@@ -71,11 +62,13 @@ class AiService {
         'req_min_ipk': reqMinIpk,
       };
 
-      final response = await http.post(
-        Uri.parse('$_baseUrl/api/match'),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode(body),
-      ).timeout(const Duration(seconds: 30));
+      final response = await http
+          .post(
+            Uri.parse('$_baseUrl/api/match'),
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode(body),
+          )
+          .timeout(const Duration(seconds: 60));
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
@@ -171,9 +164,21 @@ class AiService {
 
   // ═══════════════════════════════════════════
   // READINESS SCORE (Skor Kesiapan Beasiswa)
+  // API Docs: POST /readiness-score
   // ═══════════════════════════════════════════
 
+  /// Normalisasi nilai string agar sesuai dengan format API (lowercase, tanpa spasi berlebih di sekitar tanda)
+  static String _norm(String v) {
+    return v
+        .toLowerCase()
+        .replaceAll(' - ', '-')
+        .replaceAll('> ', '>')
+        .replaceAll('< ', '<')
+        .trim();
+  }
+
   /// Kirim profil ke AI backend dan dapatkan skor kesiapan + tips dari AI
+  /// Endpoint: POST /readiness-score
   static Future<ReadinessResult> getReadinessScore({
     required double nilaiRapor,
     required String tipeNilai,
@@ -192,44 +197,66 @@ class AiService {
     String userName = 'Pengguna',
   }) async {
     try {
-      final body = {
-        'user_name': userName,
-        'nilai_rapor': nilaiRapor,
-        'tipe_nilai': tipeNilai,
-        'penghasilan_ortu': penghasilanOrtu,
-        'bantuan_sosial': bantuanSosial,
-        'tanggungan': tanggungan,
-        'pekerjaan_ortu': pekerjaanOrtu,
-        'level_prestasi': levelPrestasi,
-        'jumlah_prestasi': jumlahPrestasi,
-        'organisasi': organisasi,
-        'aktivitas_tambahan': aktivitasTambahan,
-        'dokumen_pendukung': dokumenPendukung,
-        'kejelasan_tujuan': kejelasanTujuan,
-        'tujuan_karir': tujuanKarir,
-        'keterkaitan': keterkaitan,
+      // Bangun body sesuai API docs: nested objects, nilai harus lowercase (case-sensitive)
+      final Map<String, dynamic> body = {
+        'nama': userName,
+        // Kirim ipk ATAU rapor, tidak perlu keduanya
+        if (tipeNilai == 'ipk') 'ipk': nilaiRapor else 'rapor': nilaiRapor,
+        'finansial': {
+          'penghasilan': _norm(penghasilanOrtu),
+          'bantuan_sosial': _norm(bantuanSosial),
+          'tanggungan': _norm(tanggungan),
+          'pekerjaan_ortu': _norm(pekerjaanOrtu),
+        },
+        'non_akademik': {
+          'level_prestasi': _norm(levelPrestasi),
+          'jumlah_prestasi': _norm(jumlahPrestasi),
+          'organisasi': _norm(organisasi),
+          'aktivitas_tambahan': _norm(aktivitasTambahan),
+        },
+        // dokumen adalah array — semua value dilowercase
+        'dokumen': dokumenPendukung.map((d) => _norm(d)).toList(),
+        'motivasi': {
+          'tujuan_studi': _norm(kejelasanTujuan),
+          'tujuan_karir': _norm(tujuanKarir),
+          'keterkaitan': _norm(keterkaitan),
+        },
       };
 
-      final response = await http.post(
-        Uri.parse('$_baseUrl/api/readiness'),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode(body),
-      ).timeout(const Duration(seconds: 45));
+      final response = await http
+          .post(
+            Uri.parse('$_baseUrl/readiness-score'),
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode(body),
+          )
+          .timeout(const Duration(seconds: 90));
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
+        final detailSkor = data['detail_skor'] as Map<String, dynamic>? ?? {};
+        final kelebihan = (data['kelebihan'] as List<dynamic>?)
+                ?.map((e) => e.toString())
+                .toList() ??
+            [];
+        final gap = (data['gap'] as List<dynamic>?)
+                ?.map((e) => e.toString())
+                .toList() ??
+            [];
+
         return ReadinessResult(
-          totalScore: (data['total_score'] as num).toDouble(),
-          skorAkademik: (data['skor_akademik'] as num).toDouble(),
-          skorFinansial: (data['skor_finansial'] as num).toDouble(),
-          skorNonAkademik: (data['skor_non_akademik'] as num).toDouble(),
-          skorSertifikat: (data['skor_sertifikat'] as num).toDouble(),
-          skorMotivasi: (data['skor_motivasi'] as num).toDouble(),
-          label: data['label'] as String,
-          tips: data['tips'] as String,
+          totalScore: (data['skor'] as num).toDouble(),
+          skorAkademik: (detailSkor['akademik'] as num? ?? 0).toDouble(),
+          skorFinansial: (detailSkor['finansial'] as num? ?? 0).toDouble(),
+          skorNonAkademik: (detailSkor['non_akademik'] as num? ?? 0).toDouble(),
+          skorSertifikat: (detailSkor['dokumen'] as num? ?? 0).toDouble(),
+          skorMotivasi: (detailSkor['motivasi'] as num? ?? 0).toDouble(),
+          label: data['kategori'] as String? ?? '',
+          tips: data['saran_peningkatan'] as String? ?? '',
+          kelebihan: kelebihan,
+          gap: gap,
         );
       } else {
-        debugPrint('Readiness API error: ${response.statusCode}');
+        debugPrint('Readiness API error: ${response.statusCode} — ${response.body}');
         return _fallbackReadiness(
           nilaiRapor, tipeNilai, penghasilanOrtu, bantuanSosial, tanggungan, pekerjaanOrtu,
           levelPrestasi, jumlahPrestasi, organisasi, aktivitasTambahan,
@@ -274,68 +301,78 @@ class AiService {
 
     // 2. Finansial (25%)
     double skorFin = 0;
-    if (penghasilanOrtu == '< 1 juta') skorFin += 40;
-    else if (penghasilanOrtu == '1 - 3 Juta') skorFin += 30;
-    else if (penghasilanOrtu == '3 - 5 Juta') skorFin += 20;
+    final pengNorm = _norm(penghasilanOrtu);
+    if (pengNorm == '<1 juta' || pengNorm == '< 1 juta') skorFin += 40;
+    else if (pengNorm == '1-3 juta' || pengNorm == '1 - 3 juta') skorFin += 30;
+    else if (pengNorm == '3-5 juta' || pengNorm == '3 - 5 juta') skorFin += 20;
     else skorFin += 10;
-    if (bantuanSosial == 'Ada') skorFin += 25;
-    if (tanggungan == '> 4') skorFin += 20;
-    else if (tanggungan == '3 - 4') skorFin += 15;
-    else if (tanggungan == '1 - 2') skorFin += 10;
-    if (pekerjaanOrtu == 'Tidak Tetap') skorFin += 15;
-    else if (pekerjaanOrtu == 'Informal') skorFin += 10;
-    else if (pekerjaanOrtu == 'Tetap') skorFin += 5;
+    if (_norm(bantuanSosial) == 'ada') skorFin += 25;
+    final tangNorm = _norm(tanggungan);
+    if (tangNorm == '>4' || tangNorm == '> 4') skorFin += 20;
+    else if (tangNorm == '3-4' || tangNorm == '3 - 4') skorFin += 15;
+    else if (tangNorm == '1-2' || tangNorm == '1 - 2') skorFin += 10;
+    final pkjNorm = _norm(pekerjaanOrtu);
+    if (pkjNorm == 'tidak tetap') skorFin += 15;
+    else if (pkjNorm == 'informal') skorFin += 10;
+    else if (pkjNorm == 'tetap') skorFin += 5;
     final finalFinansial = (skorFin / 100) * 25;
 
     // 3. Non-Akademik (25%)
     double skorNA = 0;
-    if (levelPrestasi == 'Internasional') skorNA += 50;
-    else if (levelPrestasi == 'Nasional') skorNA += 45;
-    else if (levelPrestasi == 'Provinsi') skorNA += 35;
-    else if (levelPrestasi == 'Sekolah') skorNA += 25;
-    if (jumlahPrestasi == '> 3') skorNA += 10;
-    else if (jumlahPrestasi == '2 - 3') skorNA += 7;
-    else if (jumlahPrestasi == '1') skorNA += 5;
-    if (organisasi == 'Ketua / Leader') skorNA += 30;
-    else if (organisasi == 'Pengurus Aktif') skorNA += 20;
-    else if (organisasi == 'Anggota') skorNA += 10;
-    if (aktivitasTambahan == 'Aktif (>2 kegiatan)') skorNA += 10;
-    else if (aktivitasTambahan == 'Pernah ikut') skorNA += 5;
+    final lvlNorm = _norm(levelPrestasi);
+    if (lvlNorm == 'internasional') skorNA += 50;
+    else if (lvlNorm == 'nasional') skorNA += 45;
+    else if (lvlNorm == 'provinsi') skorNA += 35;
+    else if (lvlNorm == 'sekolah') skorNA += 25;
+    final jmlNorm = _norm(jumlahPrestasi);
+    if (jmlNorm == '>3' || jmlNorm == '> 3') skorNA += 10;
+    else if (jmlNorm == '2-3' || jmlNorm == '2 - 3') skorNA += 7;
+    else if (jmlNorm == '1') skorNA += 5;
+    final orgNorm = _norm(organisasi);
+    if (orgNorm == 'ketua / leader' || orgNorm == 'ketua/leader') skorNA += 30;
+    else if (orgNorm == 'pengurus aktif') skorNA += 20;
+    else if (orgNorm == 'anggota') skorNA += 10;
+    final aktNorm = _norm(aktivitasTambahan);
+    if (aktNorm.startsWith('aktif')) skorNA += 10;
+    else if (aktNorm == 'pernah ikut') skorNA += 5;
     final finalNA = (skorNA / 100) * 25;
 
-    // 4. Sertifikat (5%)
+    // 4. Sertifikat/Dokumen (5%)
     double skorSert = 0;
-    if (dokumenPendukung.contains('Rekomendasi')) skorSert += 80;
-    if (dokumenPendukung.contains('CV')) skorSert += 10;
-    if (dokumenPendukung.contains('Sertifikat Khusus')) skorSert += 10;
+    final dokNorm = dokumenPendukung.map((d) => _norm(d)).toList();
+    if (dokNorm.contains('rekomendasi')) skorSert += 80;
+    if (dokNorm.contains('cv')) skorSert += 10;
+    if (dokNorm.contains('sertifikat khusus')) skorSert += 10;
     final finalSert = (skorSert / 100) * 5;
 
     // 5. Motivasi (5%)
     double skorMot = 0;
-    if (kejelasanTujuan == 'Sudah jelas dan spesifik') skorMot += 40;
-    else if (kejelasanTujuan == 'Sudah ada gambaran') skorMot += 25;
-    else if (kejelasanTujuan == 'Belum yakin') skorMot += 10;
-    if (tujuanKarir == 'Sudah jelas') skorMot += 40;
-    else if (tujuanKarir == 'Masih umum') skorMot += 25;
-    else if (tujuanKarir == 'Belum ada') skorMot += 10;
-    if (keterkaitan == 'Sangat sesuai') skorMot += 20;
-    else if (keterkaitan == 'Cukup sesuai') skorMot += 10;
+    final tujNorm = _norm(kejelasanTujuan);
+    if (tujNorm == 'sudah jelas dan spesifik') skorMot += 40;
+    else if (tujNorm.contains('sudah ada gambaran') || tujNorm.contains('gambaran')) skorMot += 25;
+    else if (tujNorm.contains('belum yakin')) skorMot += 10;
+    final karNorm = _norm(tujuanKarir);
+    if (karNorm == 'sudah jelas') skorMot += 40;
+    else if (karNorm == 'masih umum') skorMot += 25;
+    else if (karNorm.contains('belum')) skorMot += 10;
+    final ketNorm = _norm(keterkaitan);
+    if (ketNorm == 'sangat sesuai') skorMot += 20;
+    else if (ketNorm == 'cukup sesuai') skorMot += 10;
     final finalMot = (skorMot / 100) * 5;
 
     final total = finalAkademik + finalFinansial + finalNA + finalSert + finalMot;
 
+    // Kategori sesuai API: "Siap" (>=80), "Perlu sedikit persiapan" (60-79), "Perlu persiapan lebih" (<60)
     String label;
     if (total >= 80) {
-      label = 'Sangat Siap!';
-    } else if (total >= 60) {
       label = 'Siap';
-    } else if (total >= 40) {
-      label = 'Cukup Siap';
+    } else if (total >= 60) {
+      label = 'Perlu sedikit persiapan';
     } else {
-      label = 'Perlu Persiapan';
+      label = 'Perlu persiapan lebih';
     }
 
-    // Tips berdasarkan area terlemah — format terstruktur
+    // Tips berdasarkan area terlemah
     final areas = {
       'Akademik': rawAkademik,
       'Finansial': skorFin,
@@ -343,7 +380,6 @@ class AiService {
       'Sertifikat': skorSert,
       'Motivasi': skorMot,
     };
-    // Sort by score ascending (weakest first)
     final sortedAreas = areas.entries.toList()..sort((a, b) => a.value.compareTo(b.value));
     final top3 = sortedAreas.take(3).toList();
 
@@ -375,6 +411,8 @@ class AiService {
       skorMotivasi: double.parse(finalMot.toStringAsFixed(2)),
       label: label,
       tips: formattedTips,
+      kelebihan: [],
+      gap: [],
     );
   }
 }
@@ -389,6 +427,10 @@ class ReadinessResult {
   final double skorMotivasi;
   final String label;
   final String tips;
+  /// Aspek yang sudah baik (dari API)
+  final List<String> kelebihan;
+  /// Aspek yang perlu ditingkatkan (dari API)
+  final List<String> gap;
 
   ReadinessResult({
     required this.totalScore,
@@ -399,6 +441,8 @@ class ReadinessResult {
     required this.skorMotivasi,
     required this.label,
     required this.tips,
+    this.kelebihan = const [],
+    this.gap = const [],
   });
 }
 

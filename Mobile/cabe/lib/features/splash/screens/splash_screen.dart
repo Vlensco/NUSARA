@@ -72,11 +72,16 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
               .get();
           final data = doc.data();
           if (data != null) {
-            // Cek explicit flag, atau fallback: jika sudah ada nama_lengkap
-            // (untuk kompatibilitas user lama yang tidak punya field setup_completed)
-            final hasFlag = data['setup_completed'] == true;
-            final hasNama = (data['nama_lengkap'] as String? ?? '').isNotEmpty;
-            setupCompleted = hasFlag || (doc.exists && hasNama && !data.containsKey('setup_step'));
+            if (data.containsKey('setup_completed')) {
+              // Percaya pada flag eksplisit
+              setupCompleted = data['setup_completed'] == true;
+            } else {
+              // User lama tanpa flag: cek apakah profil sudah cukup lengkap
+              final hasNama = (data['nama_lengkap'] as String? ?? '').isNotEmpty;
+              final hasSekolah = (data['nama_sekolah'] as String? ?? '').isNotEmpty;
+              final hasKelas = (data['kelas'] as String? ?? '').isNotEmpty;
+              setupCompleted = hasNama && hasSekolah && hasKelas;
+            }
           }
         } catch (e) {
           debugPrint('Gagal cek setup status: $e');
