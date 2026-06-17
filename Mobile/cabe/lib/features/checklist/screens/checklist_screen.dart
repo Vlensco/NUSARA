@@ -7,6 +7,8 @@ import 'package:cabe/features/checklist/widgets/checklist_item_tile.dart';
 import 'package:cabe/shared_widgets/app_button.dart';
 import 'package:cabe/core/routing/main_navigation.dart';
 import 'package:lucide_icons/lucide_icons.dart';
+import 'package:easy_localization/easy_localization.dart';
+import 'package:cabe/core/constants/translation_helper.dart';
 
 class ChecklistScreen extends ConsumerStatefulWidget {
   const ChecklistScreen({super.key});
@@ -70,6 +72,7 @@ class _ChecklistScreenState extends ConsumerState<ChecklistScreen> {
     final checked = viewState.checked;
     final progress = viewState.progress;
     final isAllCompleted = viewState.isAllCompleted;
+    final langCode = context.locale.languageCode;
 
     return Scaffold(
       backgroundColor: AppColors.coolGray100,
@@ -83,13 +86,13 @@ class _ChecklistScreenState extends ConsumerState<ChecklistScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('Checklist Beasiswa', style: AppTextStyles.h2),
+                  Text('checklist.title'.tr(), style: AppTextStyles.h2),
                   const SizedBox(height: 8),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(
-                        'File tercatat $checked / $total',
+                        '${"checklist.files_recorded".tr()} $checked / $total',
                         style: AppTextStyles.bodySmall.copyWith(
                           color: AppColors.coolGray500,
                         ),
@@ -132,7 +135,7 @@ class _ChecklistScreenState extends ConsumerState<ChecklistScreen> {
                       Padding(
                         padding: const EdgeInsets.only(top: 20, bottom: 8),
                         child: Text(
-                          section.title,
+                          TranslationHelper.translateSection(section.title, langCode),
                           style: AppTextStyles.h3,
                         ),
                       ),
@@ -158,7 +161,8 @@ class _ChecklistScreenState extends ConsumerState<ChecklistScreen> {
     // Buat list teks per beasiswa
     final lines = acronyms.map((acronym) {
       final fullName = _acronymToFullName[acronym] ?? acronym;
-      return 'Dokumen $fullName ($acronym) sudah lengkap!';
+      final displayFullName = TranslationHelper.translateTitle(fullName, context.locale.languageCode);
+      return '${"checklist.document".tr()} $displayFullName ($acronym) ${"checklist.is_completed".tr()}';
     }).toList();
 
     overlayEntry = OverlayEntry(
@@ -223,9 +227,9 @@ class _ChecklistScreenState extends ConsumerState<ChecklistScreen> {
                               ),
                             )),
                         const SizedBox(height: 4),
-                        const Text(
-                          'Cek halaman Progress untuk status peninjauan.',
-                          style: TextStyle(
+                        Text(
+                          'checklist.toast_check_progress'.tr(),
+                          style: const TextStyle(
                             color: Colors.white70,
                             fontSize: 11,
                           ),
@@ -259,19 +263,19 @@ class _ChecklistScreenState extends ConsumerState<ChecklistScreen> {
             const Icon(LucideIcons.clipboardList, size: 64, color: AppColors.coolGray300),
             const SizedBox(height: 24),
             Text(
-              'Belum ada beasiswa yang didaftar',
+              'checklist.empty_title'.tr(),
               style: AppTextStyles.h2,
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 12),
             Text(
-              'Daftar beasiswa pilihanmu terlebih dahulu untuk melihat daftar tugas dan dokumen yang perlu disiapkan di sini.',
+              'checklist.empty_desc'.tr(),
               style: AppTextStyles.bodyMedium.copyWith(color: AppColors.coolGray500),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 32),
             AppButton(
-              label: 'Jelajahi Beasiswa',
+              label: 'checklist.explore_btn'.tr(),
               isFullWidth: true,
               onPressed: () {
                 ref.read(bottomNavIndexProvider.notifier).setIndex(0);

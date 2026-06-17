@@ -3,9 +3,10 @@ import 'package:lucide_icons/lucide_icons.dart';
 import 'package:cabe/core/theme/app_colors.dart';
 import 'package:cabe/core/theme/app_text_styles.dart';
 import 'package:cabe/features/notifikasi/widgets/notifikasi_card.dart';
-
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cabe/features/notifikasi/controllers/notifikasi_controller.dart';
+import 'package:cabe/features/notifikasi/models/notifikasi_model.dart';
+import 'package:easy_localization/easy_localization.dart';
 
 class NotifikasiScreen extends ConsumerWidget {
   const NotifikasiScreen({super.key});
@@ -19,11 +20,11 @@ class NotifikasiScreen extends ConsumerWidget {
     // Kondisi: Tidak ada notifikasi
     if (notifications.isEmpty) {
       final emptyTitle = hasRemovedAny
-          ? 'Notifikasi sudah bersih!'
-          : 'Kotak notifikasimu masih sepi.';
+          ? 'notification.empty_cleaned_title'.tr()
+          : 'notification.empty_default_title'.tr();
       final emptySubtitle = hasRemovedAny
-          ? 'Kamu sudah menghapus semua riwayat pemberitahuan. Kami akan kabari lagi jika ada pembaruan beasiswamu.'
-          : 'Nanti, pengingat tenggat waktu dokumen dan status kelulusan beasiswamu akan kami kirimkan ke sini.';
+          ? 'notification.empty_cleaned_subtitle'.tr()
+          : 'notification.empty_default_subtitle'.tr();
       final emptyIcon = hasRemovedAny ? LucideIcons.checkCircle : LucideIcons.bellOff;
 
       return Scaffold(
@@ -34,10 +35,10 @@ class NotifikasiScreen extends ConsumerWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('Notifikasi', style: AppTextStyles.h2),
+                Text('notification.title'.tr(), style: AppTextStyles.h2),
                 const SizedBox(height: 4),
                 Text(
-                  'Tidak ada notifikasi',
+                  'notification.no_notifications'.tr(),
                   style: AppTextStyles.bodyMedium.copyWith(
                     color: AppColors.gray400,
                   ),
@@ -88,11 +89,23 @@ class NotifikasiScreen extends ConsumerWidget {
       );
     }
 
-    // Kondisi 2 & 3: unread atau semua sudah dibaca
-    // Pisahkan berdasarkan waktu, unread di atas
-    final terbaru = notifications.where((n) => n.time == 'Baru saja').toList()
+    // Pisahkan notifikasi berdasarkan tipe
+    final deadlineNotifs = notifications
+        .where((n) => n.type == NotifikasiType.deadline)
+        .toList()
+      ..sort((a, b) => (a.daysLeft ?? 999).compareTo(b.daysLeft ?? 999));
+
+    final progressNotifs = notifications
+        .where((n) => n.type != NotifikasiType.deadline)
+        .toList();
+
+    final terbaru = progressNotifs
+        .where((n) => n.time.contains('Baru saja') || n.time.contains('Just now'))
+        .toList()
       ..sort((a, b) => a.isRead == b.isRead ? 0 : (a.isRead ? 1 : -1));
-    final sebelumnya = notifications.where((n) => n.time != 'Baru saja').toList()
+    final sebelumnya = progressNotifs
+        .where((n) => !n.time.contains('Baru saja') && !n.time.contains('Just now'))
+        .toList()
       ..sort((a, b) => a.isRead == b.isRead ? 0 : (a.isRead ? 1 : -1));
 
     return Scaffold(
@@ -111,15 +124,15 @@ class NotifikasiScreen extends ConsumerWidget {
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
-                        'Notifikasi',
+                      Text(
+                        'notification.title'.tr(),
                         style: AppTextStyles.h2,
                       ),
                       const SizedBox(height: 4),
                       Text(
                         unreadCount > 0
-                            ? '$unreadCount belum dibaca'
-                            : 'Semua sudah dibaca',
+                            ? '$unreadCount ${"notification.unread".tr()}'
+                            : 'notification.all_read'.tr(),
                         style: AppTextStyles.bodyMedium.copyWith(
                           color: AppColors.gray400,
                         ),
@@ -133,10 +146,10 @@ class NotifikasiScreen extends ConsumerWidget {
                       } else {
                         ref.read(notifikasiProvider.notifier).removeAll();
                         ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('Semua notifikasi berhasil dihapus.'),
+                          SnackBar(
+                            content: Text('notification.toast_all_deleted'.tr()),
                             behavior: SnackBarBehavior.floating,
-                            duration: Duration(seconds: 3),
+                            duration: const Duration(seconds: 3),
                           ),
                         );
                       }
@@ -144,7 +157,7 @@ class NotifikasiScreen extends ConsumerWidget {
                     child: Padding(
                       padding: const EdgeInsets.only(bottom: 4.0),
                       child: Text(
-                        unreadCount > 0 ? 'Tandai semua dibaca' : 'Hapus semua',
+                        unreadCount > 0 ? 'notification.mark_all_read'.tr() : 'notification.clear_all'.tr(),
                         style: AppTextStyles.labelLarge.copyWith(
                           color: unreadCount > 0 ? AppColors.blue900 : AppColors.dangerText,
                         ),
@@ -155,10 +168,51 @@ class NotifikasiScreen extends ConsumerWidget {
               ),
               const SizedBox(height: 24),
 
+              // Section: DEADLINE BEASISWA
+              if (deadlineNotifs.isNotEmpty) ...[
+                Row(
+                  children: [
+                    const Icon(LucideIcons.calendarClock, size: 16, color: AppColors.blue600),
+                    const SizedBox(width: 6),
+                    Text(
+                      'DEADLINE BEASISWA',
+                      style: AppTextStyles.labelLarge.copyWith(
+                        color: AppColors.blue600,
+                        letterSpacing: 1.0,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: AppColors.blue100,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Text(
+                        '${deadlineNotifs.length}',
+                        style: AppTextStyles.bodySmall.copyWith(
+                          color: AppColors.blue600,
+                          fontWeight: FontWeight.w700,
+                          fontSize: 11,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                ...deadlineNotifs.asMap().entries.map(
+                  (entry) => _buildNotifItem(context, ref, entry.value,
+                      isLast: entry.key == deadlineNotifs.length - 1 &&
+                          terbaru.isEmpty &&
+                          sebelumnya.isEmpty),
+                ),
+              ],
+
               // Section: TERBARU
               if (terbaru.isNotEmpty) ...[
+                SizedBox(height: deadlineNotifs.isNotEmpty ? 24 : 0),
                 Text(
-                  'TERBARU',
+                  'notification.sec_recent'.tr(),
                   style: AppTextStyles.labelLarge.copyWith(
                     color: AppColors.gray500,
                     letterSpacing: 1.0,
@@ -173,9 +227,9 @@ class NotifikasiScreen extends ConsumerWidget {
 
               // Section: SEBELUMNYA
               if (sebelumnya.isNotEmpty) ...[
-                SizedBox(height: terbaru.isNotEmpty ? 24 : 0),
+                SizedBox(height: (terbaru.isNotEmpty || deadlineNotifs.isNotEmpty) ? 24 : 0),
                 Text(
-                  'SEBELUMNYA',
+                  'notification.sec_previous'.tr(),
                   style: AppTextStyles.labelLarge.copyWith(
                     color: AppColors.gray500,
                     letterSpacing: 1.0,
@@ -205,10 +259,10 @@ class NotifikasiScreen extends ConsumerWidget {
 
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: const Text('Notifikasi dihapus'),
+              content: Text('notification.toast_deleted'.tr()),
               behavior: SnackBarBehavior.floating,
               action: SnackBarAction(
-                label: 'Urungkan',
+                label: 'notification.toast_undo'.tr(),
                 textColor: AppColors.blue200,
                 onPressed: () {
                   ref.read(notifikasiProvider.notifier).undoRemove(notif);
@@ -224,7 +278,7 @@ class NotifikasiScreen extends ConsumerWidget {
           ),
           alignment: Alignment.centerRight,
           padding: const EdgeInsets.symmetric(horizontal: 24),
-          child: Icon(LucideIcons.trash2, color: AppColors.white),
+          child: const Icon(LucideIcons.trash2, color: AppColors.white),
         ),
         child: GestureDetector(
           onTap: () {

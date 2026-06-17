@@ -3,6 +3,8 @@ import 'package:lucide_icons/lucide_icons.dart';
 import 'package:cabe/core/theme/app_colors.dart';
 import 'package:cabe/core/theme/app_text_styles.dart';
 import 'package:cabe/features/notifikasi/models/notifikasi_model.dart';
+import 'package:easy_localization/easy_localization.dart';
+import 'package:cabe/core/constants/translation_helper.dart';
 
 class NotifikasiCard extends StatelessWidget {
   final NotifikasiModel notifikasi;
@@ -12,8 +14,26 @@ class NotifikasiCard extends StatelessWidget {
     required this.notifikasi,
   });
 
+  String _getTranslatedMessage(String langCode) {
+    final message = notifikasi.message;
+    final title = TranslationHelper.translateTitle(notifikasi.title, langCode);
+    if (notifikasi.type == NotifikasiType.deadline) {
+      // Deadline messages are already formatted, just return as-is
+      return message;
+    } else if (message.contains('sedang dalam tahap peninjauan')) {
+      return 'notification.msg_review'.tr(args: [title]);
+    } else if (message.contains('telah diterima')) {
+      return 'notification.msg_accepted'.tr(args: [title]);
+    } else if (message.contains('telah menolak')) {
+      return 'notification.msg_rejected'.tr(args: [title]);
+    }
+    return message;
+  }
+
   @override
   Widget build(BuildContext context) {
+    final langCode = context.locale.languageCode;
+    final displayTitle = TranslationHelper.translateTitle(notifikasi.title, langCode);
     return Container(
       decoration: BoxDecoration(
         color: notifikasi.isRead ? Colors.white : const Color(0xFFEFF6FF),
@@ -53,14 +73,14 @@ class NotifikasiCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      notifikasi.title,
+                      displayTitle,
                       style: AppTextStyles.h4.copyWith(
                         fontSize: 16,
                       ),
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      notifikasi.message,
+                      _getTranslatedMessage(langCode),
                       style: AppTextStyles.bodyMedium.copyWith(
                         fontSize: 12,
                         color: AppColors.gray500,
@@ -70,8 +90,10 @@ class NotifikasiCard extends StatelessWidget {
                     const SizedBox(height: 12),
                     Row(
                       children: [
-                        const Icon(
-                          LucideIcons.clock,
+                        Icon(
+                          notifikasi.type == NotifikasiType.deadline
+                              ? LucideIcons.calendarClock
+                              : LucideIcons.clock,
                           size: 14,
                           color: AppColors.gray500,
                         ),
@@ -79,10 +101,40 @@ class NotifikasiCard extends StatelessWidget {
                         Text(
                           notifikasi.time,
                           style: AppTextStyles.bodySmall.copyWith(
-                            color: AppColors.gray500,
-                            fontWeight: FontWeight.w500,
+                            color: notifikasi.type == NotifikasiType.deadline && (notifikasi.daysLeft ?? 99) <= 7
+                                ? AppColors.dangerText
+                                : AppColors.gray500,
+                            fontWeight: notifikasi.type == NotifikasiType.deadline && (notifikasi.daysLeft ?? 99) <= 7
+                                ? FontWeight.w700
+                                : FontWeight.w500,
                           ),
                         ),
+                        if (notifikasi.type == NotifikasiType.deadline && notifikasi.daysLeft != null) ...[
+                          const Spacer(),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                            decoration: BoxDecoration(
+                              color: (notifikasi.daysLeft ?? 99) <= 7
+                                  ? AppColors.dangerBg
+                                  : (notifikasi.daysLeft ?? 99) <= 14
+                                      ? const Color(0xFFFFF8E1)
+                                      : AppColors.blue100,
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Text(
+                              '${notifikasi.daysLeft} hari',
+                              style: AppTextStyles.bodySmall.copyWith(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w700,
+                                color: (notifikasi.daysLeft ?? 99) <= 7
+                                    ? AppColors.dangerText
+                                    : (notifikasi.daysLeft ?? 99) <= 14
+                                        ? AppColors.warningText
+                                        : AppColors.blue600,
+                              ),
+                            ),
+                          ),
+                        ],
                       ],
                     ),
                   ],
@@ -127,6 +179,8 @@ class NotifikasiCard extends StatelessWidget {
         return LucideIcons.checkCircle;
       case NotifikasiType.ditolak:
         return LucideIcons.xCircle;
+      case NotifikasiType.deadline:
+        return LucideIcons.calendarClock;
     }
   }
 
@@ -138,6 +192,8 @@ class NotifikasiCard extends StatelessWidget {
         return AppColors.successText;
       case NotifikasiType.ditolak:
         return AppColors.dangerText;
+      case NotifikasiType.deadline:
+        return AppColors.blue600;
     }
   }
 
@@ -149,6 +205,8 @@ class NotifikasiCard extends StatelessWidget {
         return const Color(0xFFE8F5E9);
       case NotifikasiType.ditolak:
         return AppColors.dangerBg;
+      case NotifikasiType.deadline:
+        return AppColors.blue100;
     }
   }
 }

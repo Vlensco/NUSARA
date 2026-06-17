@@ -1,6 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cabe/features/onboarding/screens/onboarding_screen.dart';
+import 'package:cabe/core/routing/main_navigation.dart';
 import 'package:cabe/core/theme/app_colors.dart';
+import 'package:cabe/core/services/ai_service.dart';
+import 'package:cabe/features/profile_setup/screens/profile_setup_screen.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -51,10 +56,60 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
     }
     await Future.delayed(const Duration(milliseconds: 1500));
 
+    // Cek koneksi ke Server AI (Consume endpoint / dan /health)
+    await AiService.checkServerHealth();
+
     if (mounted) {
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute(builder: (_) => const OnboardingScreen()),
-      );
+      // Check apakah user sudah login
+      final user = FirebaseAuth.instance.currentUser;
+      if (user != null) {
+        // Cek apakah setup profil sudah selesai
+        bool setupCompleted = false;
+        try {
+          final doc = await FirebaseFirestore.instance
+              .collection('users')
+              .doc(user.uid)
+              .get();
+          final data = doc.data();
+          if (data != null) {
+            if (data.containsKey('setup_completed')) {
+              // Percaya pada flag eksplisit
+              setupCompleted = data['setup_completed'] == true;
+            } else {
+              // User lama tanpa flag: cek apakah profil sudah cukup lengkap
+              final hasNama = (data['nama_lengkap'] as String? ?? '').isNotEmpty;
+              final hasSekolah = (data['nama_sekolah'] as String? ?? '').isNotEmpty;
+              final hasKelas = (data['kelas'] as String? ?? '').isNotEmpty;
+              setupCompleted = hasNama && hasSekolah && hasKelas;
+            }
+          }
+        } catch (e) {
+          debugPrint('Gagal cek setup status: $e');
+          // Jika gagal fetch, amankan user ke home agar tidak terjebak
+          setupCompleted = true;
+        }
+
+        if (!mounted) return;
+
+        if (setupCompleted) {
+          // Setup sudah selesai → langsung ke Home
+          Navigator.of(context).pushReplacement(
+            MaterialPageRoute(builder: (_) => const MainNavigation()),
+          );
+        } else {
+          // Setup belum selesai → lanjutkan dari step terakhir
+          Navigator.of(context).pushReplacement(
+            MaterialPageRoute(
+              builder: (_) => const ProfileSetupScreen(resumeFromDraft: true),
+            ),
+          );
+        }
+      } else {
+        // Belum login → ke Onboarding/Login
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(builder: (_) => const OnboardingScreen()),
+        );
+      }
     }
   }
 

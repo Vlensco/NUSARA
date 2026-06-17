@@ -1,98 +1,327 @@
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cabe/features/notifikasi/models/notifikasi_model.dart';
 import 'package:cabe/features/progress/controllers/progress_controller.dart';
+import 'package:cabe/features/scholarships/providers/scholarship_provider.dart';
+import 'package:easy_localization/easy_localization.dart';
 
 class NotifikasiNotifier extends Notifier<List<NotifikasiModel>> {
-  // Menyimpan ID notifikasi yang sudah dihapus oleh user
   final Set<String> _removedIds = {};
-  // Menyimpan ID notifikasi yang sudah dibaca
   final Set<String> _readIds = {};
-  // Track apakah user pernah menghapus notifikasi
   bool _hasRemovedAny = false;
-  // History of notifications
   final List<NotifikasiModel> _history = [];
+  bool _dbLoaded = false;
+  bool _deadlinesGenerated = false;
+  final Set<String> _existingContentKeys = {};
 
   @override
   List<NotifikasiModel> build() {
-    // Listen for progress changes and append to history
+    // Load dari database pertama kali
+    if (!_dbLoaded) {
+      _loadFromDb();
+    }
+
+    // Generate notifikasi deadline dari data beasiswa
+    if (!_deadlinesGenerated) {
+      _generateDeadlineNotifications();
+    }
+
+    // Listen perubahan progress — HANYA generate notifikasi untuk status BARU
     ref.listen(
       progressProvider,
       (previous, next) {
-        bool addedNew = false;
-        for (final item in next.items) {
-          String? notifId;
-          String? message;
-          NotifikasiType? type;
+        // Skip jika belum ada data sebelumnya (first load)
+        if (previous == null) return;
 
-          if (item.status == ProgressStatus.ditinjau) {
-            notifId = '${item.id}_ditinjau';
-            message = 'Dokumen ${item.title} sedang dalam tahap peninjauan. Harap menunggu hasil seleksi.';
-            type = NotifikasiType.ditinjau;
-          } else if (item.status == ProgressStatus.diterima) {
-            notifId = '${item.id}_diterima';
-            message = 'Selamat! Pendaftaran ${item.title} telah diterima. Segera lakukan pendaftaran ulang!';
-            type = NotifikasiType.diterima;
-          } else if (item.status == ProgressStatus.ditolak) {
-            notifId = '${item.id}_ditolak';
-            message = '${item.title} telah menolak pendaftaran beasiswa yang anda ajukan.';
-            type = NotifikasiType.ditolak;
-          }
-
-          if (notifId != null) {
-            // Check if this specific status change is already in history
-            final exists = _history.any((n) => n.id == notifId);
-            if (!exists) {
-              _history.insert(0, NotifikasiModel(
-                id: notifId,
-                title: item.title,
-                message: message!,
-                time: 'Baru saja',
-                isRead: false,
-                type: type!,
-              ));
-              addedNew = true;
-            }
-          }
-        }
-        
-        if (addedNew) {
-          _updateState();
-        }
+        _handleProgressChanges(previous.items, next.items);
       },
-      fireImmediately: true,
+      fireImmediately: false, // JANGAN fire saat pertama kali — data dari DB sudah ada
     );
 
     return _history.where((n) => !_removedIds.contains(n.id)).toList();
   }
 
+  /// Generate notifikasi deadline dari semua beasiswa yang masih buka
+  void _generateDeadlineNotifications() {
+    _deadlinesGenerated = true;
+
+    final scholarships = ref.read(scholarshipProvider);
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+
+    for (final s in scholarships) {
+      final daysLeft = s.deadline.difference(today).inDays;
+
+      // Hanya tampilkan deadline yang <= 30 hari dan belum lewat
+      if (daysLeft < 0 || daysLeft > 30) continue;
+
+      final contentKey = 'deadline_${s.id}';
+      if (_existingContentKeys.contains(contentKey)) continue;
+
+      // Tentukan pesan berdasarkan urgensi
+      String message;
+      if (daysLeft <= 3) {
+        message = 'Segera daftar! Pendaftaran ${s.title} ditutup dalam $daysLeft hari lagi (${s.deadlineFormatted}).';
+      } else if (daysLeft <= 7) {
+        message = 'Jangan sampai terlewat! Deadline ${s.title} tinggal $daysLeft hari lagi (${s.deadlineFormatted}).';
+      } else if (daysLeft <= 14) {
+        message = 'Persiapkan dokumenmu! Deadline ${s.title} pada ${s.deadlineFormatted} ($daysLeft hari lagi).';
+      } else {
+        message = 'Pendaftaran ${s.title} ditutup pada ${s.deadlineFormatted} ($daysLeft hari lagi). Siapkan berkas dari sekarang!';
+      }
+
+      // Time label berdasarkan urgensi
+      String timeLabel;
+      if (daysLeft <= 3) {
+        timeLabel = 'Mendesak';
+      } else if (daysLeft <= 7) {
+        timeLabel = 'Minggu ini';
+      } else {
+        timeLabel = 'Deadline ${s.deadlineFormatted}';
+      }
+
+      final notif = NotifikasiModel(
+        id: contentKey,
+        title: s.title,
+        message: message,
+        time: timeLabel,
+        isRead: false,
+        type: NotifikasiType.deadline,
+        daysLeft: daysLeft,
+      );
+
+      _history.add(notif);
+      _existingContentKeys.add(contentKey);
+    }
+
+    // Sort: deadline yang paling dekat di atas
+    _history.sort((a, b) {
+      // Deadline notifikasi paling urgent di atas
+      if (a.type == NotifikasiType.deadline && b.type == NotifikasiType.deadline) {
+        return (a.daysLeft ?? 999).compareTo(b.daysLeft ?? 999);
+      }
+      // Non-deadline (progress notif) tetap di atas deadline
+      if (a.type != NotifikasiType.deadline && b.type == NotifikasiType.deadline) return -1;
+      if (a.type == NotifikasiType.deadline && b.type != NotifikasiType.deadline) return 1;
+      return 0;
+    });
+  }
+
+  /// Handle HANYA perubahan status yang benar-benar baru
+  void _handleProgressChanges(List<ProgressItem> oldItems, List<ProgressItem> newItems) {
+    bool addedNew = false;
+
+    for (final newItem in newItems) {
+      // Cari item lama
+      final oldItem = oldItems.where((o) => o.id == newItem.id).firstOrNull;
+
+      // Skip jika status tidak berubah
+      if (oldItem != null && oldItem.status == newItem.status) continue;
+      // Skip jika status 'tersimpan' (tidak perlu notifikasi)
+      if (newItem.status == ProgressStatus.tersimpan) continue;
+
+      String? message;
+      NotifikasiType? type;
+      final contentKey = '${newItem.title}_${newItem.status.name}';
+
+      // Skip jika notifikasi ini sudah pernah dibuat
+      if (_existingContentKeys.contains(contentKey)) continue;
+
+      if (newItem.status == ProgressStatus.ditinjau) {
+        message = 'Dokumen ${newItem.title} sedang dalam tahap peninjauan. Harap menunggu hasil seleksi.';
+        type = NotifikasiType.ditinjau;
+      } else if (newItem.status == ProgressStatus.diterima) {
+        message = 'Selamat! Pendaftaran ${newItem.title} telah diterima. Segera lakukan pendaftaran ulang!';
+        type = NotifikasiType.diterima;
+      } else if (newItem.status == ProgressStatus.ditolak) {
+        message = '${newItem.title} telah menolak pendaftaran beasiswa yang anda ajukan.';
+        type = NotifikasiType.ditolak;
+      }
+
+      if (message != null && type != null) {
+        final notif = NotifikasiModel(
+          id: contentKey, // Temporary ID, akan diupdate setelah insert ke DB
+          title: newItem.title,
+          message: message,
+          time: 'notification.time_just_now'.tr(),
+          isRead: false,
+          type: type,
+        );
+
+        _history.insert(0, notif);
+        _existingContentKeys.add(contentKey);
+        addedNew = true;
+
+        // Simpan ke Firestore
+        _insertNotifToDb(notif);
+      }
+    }
+
+    if (addedNew) {
+      _updateState();
+    }
+  }
+
+  /// Load notifikasi dari Firestore
+  Future<void> _loadFromDb() async {
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) return;
+
+      final snapshot = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .collection('notifications')
+          .orderBy('created_at', descending: true)
+          .limit(50)
+          .get();
+
+      for (final doc in snapshot.docs) {
+        final data = doc.data();
+        final id = doc.id;
+        final isRead = data['is_read'] as bool? ?? false;
+        final title = data['title'] as String? ?? '';
+        final message = data['message'] as String? ?? '';
+        final createdAt = (data['created_at'] as Timestamp?)?.toDate() ?? DateTime.now();
+
+        final notif = NotifikasiModel(
+          id: id,
+          title: title,
+          message: message,
+          time: _formatTime(createdAt),
+          isRead: isRead,
+          type: _parseType(message),
+        );
+
+        if (!_history.any((h) => h.id == notif.id)) {
+          _history.add(notif);
+          if (isRead) _readIds.add(id);
+        }
+
+        // Track content key agar tidak generate ulang
+        _trackContentKey(title, message);
+      }
+
+      _dbLoaded = true;
+      _updateState();
+    } catch (e) {
+      debugPrint('Error loading notifications: $e');
+      _dbLoaded = true;
+    }
+  }
+
+  /// Track content key berdasarkan title + message agar tidak duplikat
+  void _trackContentKey(String title, String message) {
+    if (message.contains('tahap peninjauan')) {
+      _existingContentKeys.add('${title}_ditinjau');
+    } else if (message.contains('telah diterima')) {
+      _existingContentKeys.add('${title}_diterima');
+    } else if (message.contains('telah menolak')) {
+      _existingContentKeys.add('${title}_ditolak');
+    }
+  }
+
+  /// Insert notifikasi ke Firestore
+  Future<void> _insertNotifToDb(NotifikasiModel notif) async {
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) return;
+
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .collection('notifications')
+          .add({
+        'title': notif.title,
+        'message': notif.message,
+        'is_read': false,
+        'created_at': FieldValue.serverTimestamp(),
+      });
+    } catch (e) {
+      debugPrint('Error inserting notification: $e');
+    }
+  }
+
+  NotifikasiType _parseType(String message) {
+    if (message.contains('diterima')) return NotifikasiType.diterima;
+    if (message.contains('menolak')) return NotifikasiType.ditolak;
+    if (message.contains('ditutup') || message.contains('Deadline') || message.contains('deadline')) {
+      return NotifikasiType.deadline;
+    }
+    return NotifikasiType.ditinjau;
+  }
+
+  String _formatTime(DateTime dt) {
+    final diff = DateTime.now().difference(dt);
+    if (diff.inMinutes < 1) return 'notification.time_just_now'.tr();
+    if (diff.inMinutes < 60) return 'notification.time_minutes_ago'.tr(args: [diff.inMinutes.toString()]);
+    if (diff.inHours < 24) return 'notification.time_hours_ago'.tr(args: [diff.inHours.toString()]);
+    return 'notification.time_days_ago'.tr(args: [diff.inDays.toString()]);
+  }
+
   void _updateState() {
     state = _history.where((n) {
-      // Sync read state
-      if (_readIds.contains(n.id)) {
-        return !_removedIds.contains(n.id);
-      }
       return !_removedIds.contains(n.id);
     }).map((n) => n.copyWith(isRead: _readIds.contains(n.id))).toList();
   }
 
   bool get hasRemovedAny => _hasRemovedAny;
 
-  void markAllAsRead() {
+  Future<void> markAllAsRead() async {
     for (final notif in state) {
       _readIds.add(notif.id);
     }
     _updateState();
+
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) return;
+
+      final snapshot = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .collection('notifications')
+          .get();
+
+      final batch = FirebaseFirestore.instance.batch();
+      for (final doc in snapshot.docs) {
+        batch.update(doc.reference, {'is_read': true});
+      }
+      await batch.commit();
+    } catch (e) {
+      debugPrint('Error marking all as read: $e');
+    }
   }
 
   void markAsRead(String id) {
     _readIds.add(id);
     _updateState();
+    _updateReadInDb(id, true);
+  }
+
+  Future<void> _updateReadInDb(String id, bool isRead) async {
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) return;
+
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .collection('notifications')
+          .doc(id)
+          .update({'is_read': isRead});
+    } catch (e) {
+      debugPrint('Error updating notification read status: $e');
+    }
   }
 
   void removeNotifikasi(String id) {
     _removedIds.add(id);
     _hasRemovedAny = true;
     _updateState();
+    _deleteFromDb(id);
   }
 
   void removeAll() {
@@ -101,11 +330,50 @@ class NotifikasiNotifier extends Notifier<List<NotifikasiModel>> {
     }
     _hasRemovedAny = true;
     _updateState();
+    _deleteAllFromDb();
+  }
+
+  Future<void> _deleteFromDb(String id) async {
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) return;
+
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .collection('notifications')
+          .doc(id)
+          .delete();
+    } catch (e) {
+      debugPrint('Error deleting notification: $e');
+    }
+  }
+
+  Future<void> _deleteAllFromDb() async {
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) return;
+
+      final snapshot = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .collection('notifications')
+          .get();
+
+      final batch = FirebaseFirestore.instance.batch();
+      for (final doc in snapshot.docs) {
+        batch.delete(doc.reference);
+      }
+      await batch.commit();
+    } catch (e) {
+      debugPrint('Error deleting all notifications: $e');
+    }
   }
 
   void undoRemove(NotifikasiModel notifikasi) {
     _removedIds.remove(notifikasi.id);
     _updateState();
+    _insertNotifToDb(notifikasi);
   }
 
   int get unreadCount {

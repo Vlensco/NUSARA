@@ -59,12 +59,14 @@ class _LoginScreenState extends State<LoginScreen> {
                   padding: const EdgeInsets.symmetric(horizontal: 24),
                   child: Column(
                     children: [
-                      const CustomTextField(
+                      CustomTextField(
+                        controller: _controller.emailController,
                         hintText: 'Email',
                         keyboardType: TextInputType.emailAddress,
                       ),
                       const SizedBox(height: 16),
                       CustomTextField(
+                        controller: _controller.passwordController,
                         hintText: 'Password',
                         obscureText: _controller.obscurePassword,
                         keyboardType: TextInputType.visiblePassword,
@@ -100,7 +102,7 @@ class _LoginScreenState extends State<LoginScreen> {
                             ],
                           ),
                           TextButton(
-                            onPressed: () {},
+                            onPressed: () => _controller.goToForgotPassword(context),
                             child: Text(
                               'Forgot Password?',
                               style: AppTextStyles.bodySmall.copyWith(
@@ -113,16 +115,18 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                       const SizedBox(height: 24),
 
-                      AppButton(
-                        label: 'Login',
-                        variant: AppButtonVariant.primary,
-                        isFullWidth: true,
-                        onPressed: () => _controller.login(context),
-                      ),
+                      _controller.isLoading
+                          ? const Center(child: CircularProgressIndicator())
+                          : AppButton(
+                              label: 'Login',
+                              variant: AppButtonVariant.primary,
+                              isFullWidth: true,
+                              onPressed: () => _controller.login(context),
+                            ),
                       const SizedBox(height: 32),
                       const OrDivider(),
                       const SizedBox(height: 24),
-                      const SocialLoginRow(),
+                      SocialLoginRow(controller: _controller),
                       const SizedBox(height: 32),
 
                       AuthFooterLink(

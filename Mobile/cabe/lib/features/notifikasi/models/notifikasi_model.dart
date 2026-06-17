@@ -1,4 +1,4 @@
-enum NotifikasiType { ditinjau, diterima, ditolak }
+enum NotifikasiType { ditinjau, diterima, ditolak, deadline }
 
 class NotifikasiModel {
   final String id;
@@ -7,6 +7,7 @@ class NotifikasiModel {
   final String time;
   final bool isRead;
   final NotifikasiType type;
+  final int? daysLeft; // Hanya untuk tipe deadline
 
   NotifikasiModel({
     required this.id,
@@ -15,6 +16,7 @@ class NotifikasiModel {
     required this.time,
     this.isRead = false,
     this.type = NotifikasiType.ditinjau,
+    this.daysLeft,
   });
 
   NotifikasiModel copyWith({
@@ -24,6 +26,7 @@ class NotifikasiModel {
     String? time,
     bool? isRead,
     NotifikasiType? type,
+    int? daysLeft,
   }) {
     return NotifikasiModel(
       id: id ?? this.id,
@@ -32,6 +35,7 @@ class NotifikasiModel {
       time: time ?? this.time,
       isRead: isRead ?? this.isRead,
       type: type ?? this.type,
+      daysLeft: daysLeft ?? this.daysLeft,
     );
   }
 }

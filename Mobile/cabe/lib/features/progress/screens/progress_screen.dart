@@ -9,6 +9,7 @@ import 'package:cabe/features/progress/controllers/progress_controller.dart';
 import 'package:cabe/features/progress/widgets/progress_item_tile.dart';
 import 'package:cabe/features/checklist/controllers/checklist_controller.dart';
 import 'package:cabe/core/routing/main_navigation.dart';
+import 'package:easy_localization/easy_localization.dart';
 
 class ProgressScreen extends ConsumerWidget {
   const ProgressScreen({super.key});
@@ -40,10 +41,10 @@ class ProgressScreen extends ConsumerWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('Progress Pendaftaran', style: AppTextStyles.h2),
+                  Text('progress.title'.tr(), style: AppTextStyles.h2),
                   const SizedBox(height: 4),
                   Text(
-                    '${state.items.length} beasiswa terdaftar',
+                    '${state.items.length} ${"progress.count_suffix".tr()}',
                     style: AppTextStyles.bodySmall.copyWith(
                       color: AppColors.coolGray500,
                     ),
@@ -123,30 +124,30 @@ class ProgressScreen extends ConsumerWidget {
   String _emptyTitle(ProgressFilter filter) {
     switch (filter) {
       case ProgressFilter.tersimpan:
-        return 'Belum ada beasiswa incaran.';
+        return 'progress.empty_saved_title'.tr();
       case ProgressFilter.ditinjau:
-        return 'Tidak ada dokumen yang sedang ditinjau.';
+        return 'progress.empty_review_title'.tr();
       case ProgressFilter.diterima:
-        return 'Belum ada kabar baik (untuk saat ini).';
+        return 'progress.empty_accepted_title'.tr();
       case ProgressFilter.ditolak:
-        return 'Syukurlah, halaman ini masih kosong!';
+        return 'progress.empty_rejected_title'.tr();
       case ProgressFilter.semua:
-        return 'Belum ada progress.';
+        return 'progress.empty_all_title'.tr();
     }
   }
 
   String _emptySubtitle(ProgressFilter filter) {
     switch (filter) {
       case ProgressFilter.tersimpan:
-        return 'Simpan beasiswa yang menarik perhatianmu di sini agar tidak ketinggalan info pendaftarannya!';
+        return 'progress.empty_saved_desc'.tr();
       case ProgressFilter.ditinjau:
-        return 'Segera lengkapi dokumen untuk beasiswa yang kamu incar agar proses peninjauan bisa dimulai.';
+        return 'progress.empty_review_desc'.tr();
       case ProgressFilter.diterima:
-        return 'Jangan patah semangat! Terus berusaha dan apply beasiswa lainnya. Peluangmu masih terbuka lebar.';
+        return 'progress.empty_accepted_desc'.tr();
       case ProgressFilter.ditolak:
-        return 'Semoga pendaftaran beasiswamu berjalan lancar dan berbuah manis, ya.';
+        return 'progress.empty_rejected_desc'.tr();
       case ProgressFilter.semua:
-        return 'Daftar beasiswa terlebih dahulu untuk melacak progress pendaftaranmu.';
+        return 'progress.empty_all_desc'.tr();
     }
   }
 
@@ -160,19 +161,19 @@ class ProgressScreen extends ConsumerWidget {
             const Icon(LucideIcons.trendingUp, size: 64, color: AppColors.coolGray300),
             const SizedBox(height: 24),
             Text(
-              'Belum ada progress',
+              'progress.empty_root_title'.tr(),
               style: AppTextStyles.h2,
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 12),
             Text(
-              'Kamu belum mendaftar beasiswa apapun. Daftar beasiswa terlebih dahulu untuk melacak progress pendaftaranmu di sini.',
+              'progress.empty_root_desc'.tr(),
               style: AppTextStyles.bodyMedium.copyWith(color: AppColors.coolGray500),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 32),
             AppButton(
-              label: 'Jelajahi Beasiswa',
+              label: 'progress.explore_btn'.tr(),
               isFullWidth: true,
               onPressed: () {
                 ref.read(bottomNavIndexProvider.notifier).setIndex(0);

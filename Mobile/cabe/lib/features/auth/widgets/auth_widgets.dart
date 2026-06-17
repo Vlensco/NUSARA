@@ -2,35 +2,53 @@ import 'package:flutter/material.dart';
 import 'package:cabe/core/theme/app_colors.dart';
 import 'package:cabe/core/theme/app_text_styles.dart';
 import 'package:cabe/features/auth/widgets/social_button.dart';
+import 'package:cabe/features/auth/controllers/login_controller.dart';
 
 /// Reusable social login 
 class SocialLoginRow extends StatelessWidget {
-  const SocialLoginRow({super.key});
+  final LoginController controller;
+  const SocialLoginRow({super.key, required this.controller});
 
   @override
   Widget build(BuildContext context) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
+        // Facebook
         SocialButton(
           icon: Image.asset('assets/login/facebook.png', width: 28, height: 28),
           backgroundColor: AppColors.white,
           borderColor: AppColors.gray200,
-          onTap: () {},
+          onTap: () {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Login dengan Facebook segera hadir!'),
+                behavior: SnackBarBehavior.floating,
+                duration: Duration(seconds: 2),
+              ),
+            );
+          },
         ),
         const SizedBox(width: 20),
-        SocialButton(
-          icon: Image.asset('assets/login/google.png', width: 28, height: 28),
-          backgroundColor: AppColors.white,
-          borderColor: AppColors.gray200,
-          onTap: () {},
-        ),
+        // Google 
+        controller.isGoogleLoading
+            ? const SizedBox(
+                width: 56,
+                height: 56,
+                child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
+              )
+            : SocialButton(
+                icon: Image.asset('assets/login/google.png', width: 28, height: 28),
+                backgroundColor: AppColors.white,
+                borderColor: AppColors.gray200,
+                onTap: () => controller.signInWithGoogle(context),
+              ),
       ],
     );
   }
 }
 
-/// Reusable divider row.
+/// divider
 class OrDivider extends StatelessWidget {
   final String text;
   const OrDivider({super.key, this.text = 'or login with'});
@@ -53,7 +71,7 @@ class OrDivider extends StatelessWidget {
   }
 }
 
-/// Reusable auth footer link (e.g. "Don't have account? Sign Up").
+/// login footer
 class AuthFooterLink extends StatelessWidget {
   final String text;
   final String actionText;
